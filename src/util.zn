@@ -29,6 +29,15 @@ pub struct Paint {
         return t;
     }
 
+    pub fn wave(speed: f32) f32 {
+        let t = @as(f32, GetTime()) * speed;
+        let frac = t - @as(f32, @as(i32, t));
+        if (frac < 0.5) {
+            return frac * 2.0;
+        }
+        return (1.0 - frac) * 2.0;
+    }
+
     pub fn bold(text: [*]const char, x: i32, y: i32, size: i32, color: Color) void {
         let dx: i32 = 0;
         while (dx <= size / 40) {

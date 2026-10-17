@@ -8,6 +8,7 @@ use snake.types;
 use snake.util;
 use snake.snake;
 use snake.food;
+use snake.effects;
 
 const ITEM_PLAY: i32 = 0;
 const ITEM_MODE: i32 = 1;
@@ -17,6 +18,7 @@ const MENU_ITEMS: i32 = 3;
 pub struct Game {
     pub snake: Snake,
     pub food: Food,
+    pub effects: Effects,
     pub state: GameState,
     pub menu: i32,
     pub wrap: bool,
@@ -28,6 +30,7 @@ pub struct Game {
         let game = Game {
             .snake = Snake.spawn(),
             .food = Food.random(),
+            .effects = Effects.new(),
             .state = GameState.Menu,
             .menu = ITEM_PLAY,
             .wrap = false,
@@ -75,13 +78,25 @@ pub struct Game {
                 self.step();
             }
         }
+        if (!self.is_paused() && !self.is_menu()) {
+            self.effects.update(dt);
+        }
     }
 
     pub fn draw(*const self) void {
         if (self.is_menu()) {
             self.draw_menu();
         } else {
+            let camera = Camera2D {
+                .offset = self.effects.offset(),
+                .target = Vector2 { .x = 0.0, .y = 0.0 },
+                .rotation = 0.0,
+                .zoom = 1.0,
+            };
+            BeginMode2D(camera);
             self.draw_world();
+            self.effects.draw();
+            EndMode2D();
             self.draw_hud();
             self.draw_overlay();
         }
@@ -94,6 +109,7 @@ pub struct Game {
 
     pub fn restart(*self) void {
         self.snake.reset();
+        self.effects.clear();
         self.score = 0;
         self.food = Food.random();
         self.avoid_snake();
@@ -109,6 +125,13 @@ pub struct Game {
     fn is_playing(*const self) bool {
         return switch (self.state) {
             .Playing => true,
+            _ => false,
+        };
+    }
+
+    fn is_paused(*const self) bool {
+        return switch (self.state) {
+            .Paused => true,
             _ => false,
         };
     }
@@ -175,8 +198,12 @@ pub struct Game {
     }
 
     fn on_eat(*self) void {
+        let at = self.food.cell.center();
         self.score += 10;
         self.snake.speed_up();
+        self.effects.burst(at, FOOD, 16, 190.0, 3.4);
+        self.effects.burst(at, ACCENT, 7, 120.0, 2.4);
+        self.effects.kick(3.5);
         self.food = Food.random();
         self.avoid_snake();
         if (self.snake.len >= COLS * ROWS) {

@@ -1,0 +1,164 @@
+use zaylib.types;
+use zaylib.core;
+use zaylib.shapes;
+use zaylib.enums;
+use snake.config;
+use snake.util;
+
+const CAPACITY: i32 = 160;
+
+pub struct Particle {
+    pub x: f32,
+    pub y: f32,
+    pub vx: f32,
+    pub vy: f32,
+    pub life: f32,
+    pub max: f32,
+    pub size: f32,
+    pub color: Color,
+}
+
+implement Copy : Particle {}
+
+pub struct Effects {
+    pub parts: [160]Particle,
+    pub shake: f32,
+
+    pub fn new() Effects {
+        let fx = Effects {
+            .parts = [Particle {
+                .x = 0.0,
+                .y = 0.0,
+                .vx = 0.0,
+                .vy = 0.0,
+                .life = 0.0,
+                .max = 0.0,
+                .size = 0.0,
+                .color = WHITE,
+            }; 160],
+            .shake = 0.0,
+        };
+        return fx;
+    }
+
+    pub fn clear(*self) void {
+        let i: i32 = 0;
+        while (i < CAPACITY) {
+            self.parts[@as(usize, i)].life = 0.0;
+            i += 1;
+        }
+        self.shake = 0.0;
+    }
+
+    pub fn kick(*self, amount: f32) void {
+        if (amount > self.shake) {
+            self.shake = amount;
+        }
+    }
+
+    pub fn offset(*const self) Vector2 {
+        if (self.shake <= 0.0) {
+            return Vector2 { .x = 0.0, .y = 0.0 };
+        }
+        return Vector2 {
+            .x = @as(f32, GetRandomValue(-100, 100)) / 100.0 * self.shake,
+            .y = @as(f32, GetRandomValue(-100, 100)) / 100.0 * self.shake,
+        };
+    }
+
+    pub fn burst(*self, center: Vector2, color: Color, count: i32, speed: f32, size: f32) void {
+        let i: i32 = 0;
+        while (i < count) {
+            let dx = @as(f32, GetRandomValue(-100, 100)) / 100.0;
+            let dy = @as(f32, GetRandomValue(-100, 100)) / 100.0;
+            let speed_jitter = speed * (0.30 + @as(f32, GetRandomValue(0, 100)) / 140.0);
+            let life = 0.40 + @as(f32, GetRandomValue(0, 45)) / 100.0;
+            let jitter = @as(f32, GetRandomValue(-4, 4));
+            self.emit(
+                center.x + jitter,
+                center.y + jitter,
+                dx * speed_jitter,
+                dy * speed_jitter,
+                life,
+                size,
+                color,
+            );
+            i += 1;
+        }
+    }
+
+    fn emit(*self, x: f32, y: f32, vx: f32, vy: f32, life: f32, size: f32, color: Color) void {
+        let slot = self.free_slot();
+        self.parts[@as(usize, slot)] = Particle {
+            .x = x,
+            .y = y,
+            .vx = vx,
+            .vy = vy,
+            .life = life,
+            .max = life,
+            .size = size,
+            .color = color,
+        };
+    }
+
+    fn free_slot(*const self) i32 {
+        let best = 0;
+        let oldest: f32 = 99999.0;
+        let i: i32 = 0;
+        while (i < CAPACITY) {
+            let life = self.parts[@as(usize, i)].life;
+            if (life <= 0.0) {
+                return i;
+            }
+            if (life < oldest) {
+                oldest = life;
+                best = i;
+            }
+            i += 1;
+        }
+        return best;
+    }
+
+    pub fn update(*self, dt: f32) void {
+        self.shake = self.shake * 0.88;
+        if (self.shake < 0.12) {
+            self.shake = 0.0;
+        }
+        let i: i32 = 0;
+        while (i < CAPACITY) {
+            let part = self.parts[@as(usize, i)];
+            if (part.life > 0.0) {
+                self.step_part(i, part, dt);
+            }
+            i += 1;
+        }
+    }
+
+    fn step_part(*self, index: i32, part: Particle, dt: f32) void {
+        let life = part.life - dt;
+        if (life <= 0.0) {
+            self.parts[@as(usize, index)].life = 0.0;
+        } else {
+            self.parts[@as(usize, index)].life = life;
+            self.parts[@as(usize, index)].x = part.x + part.vx * dt;
+            self.parts[@as(usize, index)].y = part.y + part.vy * dt;
+            self.parts[@as(usize, index)].vx = part.vx * 0.985;
+            self.parts[@as(usize, index)].vy = part.vy * 0.985 + 210.0 * dt;
+        }
+    }
+
+    pub fn draw(*const self) void {
+        BeginBlendMode(BLEND_ADDITIVE);
+        let i: i32 = 0;
+        while (i < CAPACITY) {
+            let part = self.parts[@as(usize, i)];
+            if (part.life > 0.0) {
+                let fade = Paint.clamp01(part.life / part.max);
+                let radius = part.size * (0.30 + 0.70 * fade);
+                DrawCircleV(Vector2 { .x = part.x, .y = part.y }, radius, Paint.fade(part.color, fade));
+            }
+            i += 1;
+        }
+        EndBlendMode();
+    }
+}

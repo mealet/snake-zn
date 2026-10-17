@@ -1,5 +1,6 @@
 use zaylib.types;
 use zaylib.core;
+use zaylib.enums;
 use zaylib.shapes;
 use snake.config;
 use snake.types;
@@ -21,7 +22,10 @@ pub struct Food {
 
     pub fn draw(self) void {
         let center = self.cell.center();
-        let radius = @as(f32, CELL) * 0.30;
+        let radius = @as(f32, CELL) * 0.30 * (0.88 + 0.18 * Paint.wave(3.2));
+        BeginBlendMode(BLEND_ADDITIVE);
+        DrawCircleGradient(center, radius * 2.8, Paint.fade(FOOD, 0.20), Paint.fade(FOOD, 0.0));
+        EndBlendMode();
         DrawCircleV(center, radius, FOOD);
         DrawCircleV(
             Vector2 { .x = center.x - radius * 0.35, .y = center.y - radius * 0.35 },

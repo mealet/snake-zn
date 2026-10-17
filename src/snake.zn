@@ -1,4 +1,6 @@
 use zaylib.types;
+use zaylib.core;
+use zaylib.enums;
 use zaylib.shapes;
 use snake.config;
 use snake.types;
@@ -132,15 +134,20 @@ pub struct Snake {
     pub fn draw(*const self) void {
         let t = Paint.clamp01(self.timer / self.step);
         let span = if (self.len > 1) { self.len - 1 } else { 1 };
-        let size = @as(f32, CELL) - PAD * 2.0;
-        let inset = size / 2.0;
+        let base = @as(f32, CELL) - PAD * 2.0;
+        let head_center = self.body[0].slide(self.prev_cell(0), t);
+        Snake.halo(head_center, @as(f32, CELL) * 0.90 * (0.9 + 0.10 * Paint.wave(2.6)), SNAKE_HEAD, 0.22);
+
         let i = self.len - 1;
         while (i >= 0) {
             let center = self.body[@as(usize, i)].slide(self.prev_cell(i), t);
+            let frac = @as(f32, i) / @as(f32, span);
+            let size = base * (1.0 - 0.45 * frac);
+            let inset = size / 2.0;
             let color = if (i == 0) {
                 Paint.mix(SNAKE_HEAD, WHITE, 0.15)
             } else {
-                Paint.mix(SNAKE_HEAD, SNAKE_TAIL, @as(f32, i) / @as(f32, span))
+                Paint.mix(SNAKE_HEAD, SNAKE_TAIL, frac)
             };
             DrawRectangleRounded(
                 Rectangle { .x = center.x - inset, .y = center.y - inset, .width = size, .height = size },
@@ -150,11 +157,16 @@ pub struct Snake {
             );
             i -= 1;
         }
-        self.draw_eyes(t);
+        self.draw_eyes(head_center);
     }
 
-    fn draw_eyes(*const self, t: f32) void {
-        let center = self.body[0].slide(self.prev_cell(0), t);
+    fn halo(center: Vector2, radius: f32, color: Color, strength: f32) void {
+        BeginBlendMode(BLEND_ADDITIVE);
+        DrawCircleGradient(center, radius, Paint.fade(color, strength), Paint.fade(color, 0.0));
+        EndBlendMode();
+    }
+
+    fn draw_eyes(*const self, center: Vector2) void {
         let fwd = @as(f32, CELL) * 0.17;
         let side = @as(f32, CELL) * 0.19;
         let radius = @as(f32, CELL) * 0.10;
