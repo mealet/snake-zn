@@ -8,29 +8,58 @@ use snake.util;
 
 pub struct Food {
     pub cell: Point,
-
-    pub fn at(cell: Point) Food {
-        return Food { .cell = cell };
-    }
+    pub golden: bool,
 
     pub fn random() Food {
-        return Food.at(Point {
-            .x = GetRandomValue(0, COLS - 1),
-            .y = GetRandomValue(0, ROWS - 1),
-        });
+        return Food {
+            .cell = Point {
+                .x = GetRandomValue(0, COLS - 1),
+                .y = GetRandomValue(0, ROWS - 1),
+            },
+            .golden = false,
+        };
     }
 
-    pub fn draw(self) void {
+    pub fn gold_at(cell: Point) Food {
+        return Food { .cell = cell, .golden = true };
+    }
+
+    pub fn draw(self, frac: f32) void {
+        if (self.golden) {
+            self.draw_gold(frac);
+        } else {
+            self.draw_plain();
+        }
+    }
+
+    fn draw_plain(self) void {
         let center = self.cell.center();
         let radius = @as(f32, CELL) * 0.30 * (0.88 + 0.18 * Paint.wave(3.2));
         BeginBlendMode(BLEND_ADDITIVE);
         DrawCircleGradient(center, radius * 2.8, Paint.fade(FOOD, 0.20), Paint.fade(FOOD, 0.0));
         EndBlendMode();
         DrawCircleV(center, radius, FOOD);
+        Food.shine(center, radius, FOOD);
+    }
+
+    fn draw_gold(self, frac: f32) void {
+        let center = self.cell.center();
+        let pulse = 0.90 + 0.12 * Paint.wave(4.2);
+        let radius = @as(f32, CELL) * 0.32 * pulse;
+        let urgency: f32 = if (frac < 0.28) { 0.40 + 0.60 * Paint.wave(7.0) } else { 1.0 };
+        BeginBlendMode(BLEND_ADDITIVE);
+        DrawCircleGradient(center, radius * 3.4, Paint.fade(GOLD, 0.32 * urgency), Paint.fade(GOLD, 0.0));
+        EndBlendMode();
+        DrawCircleV(center, radius, Paint.fade(GOLD, urgency));
+        Food.shine(center, radius, Paint.fade(GOLD, urgency));
+        DrawCircleSectorLines(center, radius + 8.0, -90.0, -90.0 + 360.0 * Paint.clamp01(frac), 40, Paint.fade(GOLD, 0.75));
+    }
+
+    fn shine(center: Vector2, radius: f32, color: Color) void {
         DrawCircleV(
             Vector2 { .x = center.x - radius * 0.35, .y = center.y - radius * 0.35 },
             radius * 0.30,
-            Paint.mix(FOOD, WHITE, 0.55),
+            Paint.mix(color, WHITE, 0.60),
         );
     }
 }

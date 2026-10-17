@@ -2,10 +2,12 @@ use zaylib.types;
 use zaylib.core;
 use zaylib.shapes;
 use zaylib.enums;
+use zaylib.text;
 use snake.config;
 use snake.util;
 
 const CAPACITY: i32 = 160;
+const POPS: i32 = 16;
 
 pub struct Particle {
     pub x: f32,
@@ -20,9 +22,23 @@ pub struct Particle {
 
 implement Copy : Particle {}
 
+pub struct Popup {
+    pub x: f32,
+    pub y: f32,
+    pub value: i32,
+    pub life: f32,
+    pub max: f32,
+    pub color: Color,
+}
+
+implement Copy : Popup {}
+
 pub struct Effects {
     pub parts: [160]Particle,
+    pub pops: [16]Popup,
     pub shake: f32,
+    pub flash_alpha: f32,
+    pub flash_color: Color,
 
     pub fn new() Effects {
         let fx = Effects {
@@ -36,7 +52,17 @@ pub struct Effects {
                 .size = 0.0,
                 .color = WHITE,
             }; 160],
+            .pops = [Popup {
+                .x = 0.0,
+                .y = 0.0,
+                .value = 0,
+                .life = 0.0,
+                .max = 0.0,
+                .color = WHITE,
+            }; 16],
             .shake = 0.0,
+            .flash_alpha = 0.0,
+            .flash_color = WHITE,
         };
         return fx;
     }
@@ -47,12 +73,25 @@ pub struct Effects {
             self.parts[@as(usize, i)].life = 0.0;
             i += 1;
         }
+        let p: i32 = 0;
+        while (p < POPS) {
+            self.pops[@as(usize, p)].life = 0.0;
+            p += 1;
+        }
         self.shake = 0.0;
+        self.flash_alpha = 0.0;
     }
 
     pub fn kick(*self, amount: f32) void {
         if (amount > self.shake) {
             self.shake = amount;
+        }
+    }
+
+    pub fn flash(*self, amount: f32, color: Color) void {
+        if (amount > self.flash_alpha) {
+            self.flash_alpha = amount;
+            self.flash_color = color;
         }
     }
 
@@ -87,6 +126,18 @@ pub struct Effects {
         }
     }
 
+    pub fn popup(*self, at: Vector2, value: i32, color: Color) void {
+        let slot = self.free_pop();
+        self.pops[@as(usize, slot)] = Popup {
+            .x = at.x,
+            .y = at.y - 12.0,
+            .value = value,
+            .life = 0.85,
+            .max = 0.85,
+            .color = color,
+        };
+    }
+
     fn emit(*self, x: f32, y: f32, vx: f32, vy: f32, life: f32, size: f32, color: Color) void {
         let slot = self.free_slot();
         self.parts[@as(usize, slot)] = Particle {
@@ -119,11 +170,35 @@ pub struct Effects {
         return best;
     }
 
+    fn free_pop(*const self) i32 {
+        let best = 0;
+        let oldest: f32 = 99999.0;
+        let i: i32 = 0;
+        while (i < POPS) {
+            let life = self.pops[@as(usize, i)].life;
+            if (life <= 0.0) {
+                return i;
+            }
+            if (life < oldest) {
+                oldest = life;
+                best = i;
+            }
+            i += 1;
+        }
+        return best;
+    }
+
     pub fn update(*self, dt: f32) void {
-        self.shake = self.shake * 0.88;
+        let decay = Paint.clamp01(1.0 - 7.0 * dt);
+        self.shake = self.shake * decay;
         if (self.shake < 0.12) {
             self.shake = 0.0;
         }
+        self.flash_alpha = self.flash_alpha * Paint.clamp01(1.0 - 4.5 * dt);
+        if (self.flash_alpha < 0.01) {
+            self.flash_alpha = 0.0;
+        }
+
         let i: i32 = 0;
         while (i < CAPACITY) {
             let part = self.parts[@as(usize, i)];
@@ -131,6 +206,16 @@ pub struct Effects {
                 self.step_part(i, part, dt);
             }
             i += 1;
+        }
+
+        let p: i32 = 0;
+        while (p < POPS) {
+            let pop = self.pops[@as(usize, p)];
+            if (pop.life > 0.0) {
+                self.pops[@as(usize, p)].life = pop.life - dt;
+                self.pops[@as(usize, p)].y = pop.y - 34.0 * dt;
+            }
+            p += 1;
         }
     }
 
@@ -160,5 +245,26 @@ pub struct Effects {
             i += 1;
         }
         EndBlendMode();
+    }
+
+    pub fn draw_pops(*const self) void {
+        let i: i32 = 0;
+        while (i < POPS) {
+            let pop = self.pops[@as(usize, i)];
+            if (pop.life > 0.0) {
+                let fade = Paint.clamp01(pop.life / pop.max);
+                let text = @as([*]const char, TextFormat("+%i", pop.value));
+                let size: i32 = 22;
+                let x = @as(i32, pop.x) - Paint.width(text, size) / 2;
+                Paint.bold(text, x, @as(i32, pop.y), size, Paint.fade(pop.color, fade));
+            }
+            i += 1;
+        }
+    }
+
+    pub fn draw_flash(*const self) void {
+        if (self.flash_alpha > 0.0) {
+            DrawRectangle(0, 0, SCREEN_W, SCREEN_H, Paint.fade(self.flash_color, self.flash_alpha));
+        }
     }
 }

@@ -15,6 +15,12 @@ pub const STEP_START: f32 = 0.20;
 pub const STEP_MIN: f32 = 0.075;
 pub const STEP_DEC: f32 = 0.006;
 
+pub const COMBO_WINDOW: f32 = 2.6;
+pub const COMBO_MAX: i32 = 8;
+pub const GOLD_CHANCE: i32 = 26;
+pub const GOLD_LIFE: f32 = 6.0;
+pub const GOLD_SCORE: i32 = 50;
+
 pub const FIELD: Color = Color { .r = 30, .g = 30, .b = 30, .a = 255 };
 pub const GRID: Color = Color { .r = 46, .g = 46, .b = 46, .a = 255 };
 pub const PANEL: Color = Color { .r = 37, .g = 37, .b = 38, .a = 255 };
@@ -24,6 +30,7 @@ pub const SHADE: Color = Color { .r = 0, .g = 0, .b = 0, .a = 190 };
 pub const SNAKE_HEAD: Color = Color { .r = 86, .g = 156, .b = 214, .a = 255 };
 pub const SNAKE_TAIL: Color = Color { .r = 38, .g = 79, .b = 120, .a = 255 };
 pub const FOOD: Color = Color { .r = 209, .g = 105, .b = 105, .a = 255 };
+pub const GOLD: Color = Color { .r = 222, .g = 186, .b = 96, .a = 255 };
 
 pub const TEXT: Color = Color { .r = 212, .g = 212, .b = 212, .a = 255 };
 pub const TEXT_DIM: Color = Color { .r = 133, .g = 133, .b = 133, .a = 255 };
