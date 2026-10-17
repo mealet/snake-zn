@@ -4,14 +4,14 @@ version = 2
 name = "snake"
 version = "0.0.0"
 zeen = "^0.3.0"
-dependencies = ["zaylib@8334e28679c4e439237e6123eb0bd9126ea953dd"]
+dependencies = ["zaylib@5e303226602ffbf7568416d0097e92f69ae0859a"]
 
 [[package]]
 name = "zaylib"
 version = "0.0.0"
 zeen = "^0.3.0"
 dependencies = []
-repository = "file:///home/mealet/projects/zaylib"
+repository = "https://github.com/mealet/zaylib"
 branch = "main"
-commit = "8334e28679c4e439237e6123eb0bd9126ea953dd"
+commit = "5e303226602ffbf7568416d0097e92f69ae0859a"
 link = ["raylib"]

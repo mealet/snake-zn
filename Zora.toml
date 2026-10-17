@@ -5,4 +5,4 @@ zeen = "^0.3.0"
 type = "bin"
 
 [dependencies]
-zaylib = "file:///home/mealet/projects/zaylib"
+zaylib = "https://github.com/mealet/zaylib"
