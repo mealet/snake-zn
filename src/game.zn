@@ -9,29 +9,141 @@ use snake.util;
 use snake.snake;
 use snake.food;
 
+const ITEM_PLAY: i32 = 0;
+const ITEM_MODE: i32 = 1;
+const ITEM_QUIT: i32 = 2;
+const MENU_ITEMS: i32 = 3;
+
 pub struct Game {
     pub snake: Snake,
     pub food: Food,
+    pub state: GameState,
+    pub menu: i32,
+    pub wrap: bool,
     pub score: i32,
-    pub over: bool,
+    pub shots: i32,
+    pub quit: bool,
 
     pub fn spawn() Game {
         let game = Game {
             .snake = Snake.spawn(),
             .food = Food.random(),
+            .state = GameState.Menu,
+            .menu = ITEM_PLAY,
+            .wrap = false,
             .score = 0,
-            .over = false,
+            .shots = 0,
+            .quit = false,
         };
         game.avoid_snake();
         return game;
     }
 
+    pub fn hotkeys(*self) void {
+        if (IsKeyPressed(KEY_F11)) {
+            ToggleFullscreen();
+        }
+        if (IsKeyPressed(KEY_F12)) {
+            self.shots += 1;
+            TakeScreenshot(@as([*]const char, TextFormat("snake_%i.png", self.shots)));
+        }
+    }
+
+    pub fn input(*self) void {
+        switch (self.state) {
+            .Menu => {
+                if (IsKeyPressed(KEY_UP)) { self.menu_move(-1); }
+                if (IsKeyPressed(KEY_DOWN)) { self.menu_move(1); }
+                if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) { self.menu_select(); }
+            },
+            .Playing => {
+                self.steer();
+                if (IsKeyPressed(KEY_ESCAPE)) { self.state = GameState.Paused; }
+            },
+            .Paused => {
+                if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) { self.state = GameState.Playing; }
+                if (IsKeyPressed(KEY_Q)) { self.state = GameState.Menu; }
+            },
+            .Over => { self.end_input(); },
+            .Win => { self.end_input(); },
+        }
+    }
+
+    pub fn update(*self, dt: f32) void {
+        if (self.is_playing()) {
+            if (self.snake.tick(dt)) {
+                self.step();
+            }
+        }
+    }
+
+    pub fn draw(*const self) void {
+        if (self.is_menu()) {
+            self.draw_menu();
+        } else {
+            self.draw_world();
+            self.draw_hud();
+            self.draw_overlay();
+        }
+    }
+
+    pub fn start(*self) void {
+        self.restart();
+        self.state = GameState.Playing;
+    }
+
     pub fn restart(*self) void {
         self.snake.reset();
         self.score = 0;
-        self.over = false;
         self.food = Food.random();
         self.avoid_snake();
+    }
+
+    fn is_menu(*const self) bool {
+        return switch (self.state) {
+            .Menu => true,
+            _ => false,
+        };
+    }
+
+    fn is_playing(*const self) bool {
+        return switch (self.state) {
+            .Playing => true,
+            _ => false,
+        };
+    }
+
+    fn menu_move(*self, delta: i32) void {
+        self.menu = (self.menu + delta + MENU_ITEMS) % MENU_ITEMS;
+    }
+
+    fn menu_select(*self) void {
+        switch (self.menu) {
+            ITEM_PLAY => { self.start(); },
+            ITEM_MODE => { self.wrap = !self.wrap; },
+            ITEM_QUIT => { self.quit = true; },
+            _ => {},
+        }
+    }
+
+    fn end_input(*self) void {
+        if (IsKeyPressed(KEY_R)) { self.start(); }
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) { self.state = GameState.Menu; }
+    }
+
+    fn steer(*self) void {
+        if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
+            self.snake.turn(Point { .x = 0, .y = -1 });
+        }
+        if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
+            self.snake.turn(Point { .x = 0, .y = 1 });
+        }
+        if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
+            self.snake.turn(Point { .x = -1, .y = 0 });
+        }
+        if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
+            self.snake.turn(Point { .x = 1, .y = 0 });
+        }
     }
 
     fn avoid_snake(*self) void {
@@ -45,60 +157,182 @@ pub struct Game {
         }
     }
 
-    pub fn input(*self) void {
-        if (self.over) {
-            if (IsKeyPressed(KEY_R)) {
-                self.restart();
-            }
-        } else {
-            if (IsKeyPressed(KEY_UP)) {
-                self.snake.turn(Point { .x = 0, .y = -1 });
-            }
-            if (IsKeyPressed(KEY_DOWN)) {
-                self.snake.turn(Point { .x = 0, .y = 1 });
-            }
-            if (IsKeyPressed(KEY_LEFT)) {
-                self.snake.turn(Point { .x = -1, .y = 0 });
-            }
-            if (IsKeyPressed(KEY_RIGHT)) {
-                self.snake.turn(Point { .x = 1, .y = 0 });
-            }
-        }
-    }
-
-    pub fn update(*self, dt: f32) void {
-        if (!self.over) {
-            if (self.snake.tick(dt)) {
-                self.step();
-            }
-        }
-    }
-
     fn step(*self) void {
         self.snake.commit();
         let head = self.snake.next_head();
+        if (self.wrap) {
+            head = head.wrap();
+        }
         let eating = head.eq(self.food.cell);
         if (!head.inside() || self.snake.hits_self(head, eating)) {
-            self.over = true;
+            self.state = GameState.Over;
         } else {
             self.snake.advance(head, eating);
             if (eating) {
-                self.score += 10;
-                self.snake.speed_up();
-                self.food = Food.random();
-                self.avoid_snake();
+                self.on_eat();
             }
         }
     }
 
-    pub fn draw(*const self) void {
+    fn on_eat(*self) void {
+        self.score += 10;
+        self.snake.speed_up();
+        self.food = Food.random();
+        self.avoid_snake();
+        if (self.snake.len >= COLS * ROWS) {
+            self.state = GameState.Win;
+        }
+    }
+
+    fn draw_world(*const self) void {
         Game.draw_grid();
         self.food.draw();
         self.snake.draw();
-        self.draw_hud();
-        if (self.over) {
-            Game.draw_over();
+    }
+
+    fn draw_hud(*const self) void {
+        DrawRectangle(0, 0, SCREEN_W, HUD, PANEL);
+        DrawRectangle(0, HUD - 1, SCREEN_W, 1, BORDER);
+        DrawText("SCORE", 16, 16, 16, TEXT_DIM);
+        DrawText(
+            @as([*]const char, TextFormat("%i", self.score)),
+            16 + Paint.width("SCORE", 16) + 10,
+            12,
+            22,
+            ACCENT,
+        );
+
+        let mode: [*]const char = if (self.wrap) { @as([*]const char, "WRAP") } else { @as([*]const char, "WALLS") };
+        DrawText(mode, SCREEN_W / 2 - Paint.width(mode, 16) / 2, 17, 16, TEXT_DIM);
+
+        let fps = @as([*]const char, TextFormat("FPS %i", GetFPS()));
+        DrawText(fps, SCREEN_W - 16 - Paint.width(fps, 16), 17, 16, TEXT_DIM);
+    }
+
+    fn draw_overlay(*const self) void {
+        switch (self.state) {
+            .Paused => { self.draw_paused(); },
+            .Over => { self.draw_over(); },
+            .Win => { self.draw_win(); },
+            _ => {},
         }
+    }
+
+    fn draw_menu_item(*const self, text: [*]const char, index: i32, y: i32) void {
+        let size: i32 = 32;
+        let width = Paint.width(text, size);
+        let x = (SCREEN_W - width) / 2;
+        let active = index == self.menu;
+        if (active) {
+            DrawRectangleRounded(
+                Rectangle {
+                    .x = @as(f32, x - 22),
+                    .y = @as(f32, y - 8),
+                    .width = @as(f32, width + 44),
+                    .height = @as(f32, size + 16),
+                },
+                0.45,
+                8,
+                Paint.fade(ACCENT, 0.16),
+            );
+        }
+        let color = if (active) { ACCENT } else { TEXT_DIM };
+        DrawText(text, x, y, size, color);
+    }
+
+    fn draw_menu(*const self) void {
+        let title: [*]const char = "ZEEN SNAKE";
+        let title_size: i32 = 72;
+        Paint.bold(title, Paint.center_x(title, title_size), 108, title_size, SNAKE_HEAD);
+
+        let y0: i32 = 300;
+        let gap: i32 = 64;
+        self.draw_menu_item("PLAY", ITEM_PLAY, y0);
+        self.draw_menu_item(Game.mode_label(self.wrap), ITEM_MODE, y0 + gap);
+        self.draw_menu_item("QUIT", ITEM_QUIT, y0 + gap * 2);
+
+        self.draw_hint();
+    }
+
+    fn draw_hint(*const self) void {
+        let label: [*]const char = "Navigate With";
+        let slash: [*]const char = "/";
+        let size: i32 = 20;
+        let y = SCREEN_H - 62;
+        let label_w = Paint.width(label, size);
+        let slash_w = Paint.width(slash, size);
+        let arrow_w: i32 = 22;
+        let gap: i32 = 12;
+        let total = label_w + gap + arrow_w + gap + slash_w + gap + arrow_w;
+        let x = (SCREEN_W - total) / 2;
+
+        DrawText(label, x, y, size, TEXT_DIM);
+        let ax = x + label_w + gap;
+        Game.arrow(ax, y + size / 2, arrow_w, false);
+        ax += arrow_w + gap;
+        DrawText(slash, ax, y, size, TEXT_DIM);
+        ax += slash_w + gap;
+        Game.arrow(ax, y + size / 2, arrow_w, true);
+    }
+
+    fn draw_paused(*const self) void {
+        DrawRectangle(0, 0, SCREEN_W, SCREEN_H, SHADE);
+
+        let title: [*]const char = "PAUSED";
+        let size: i32 = 56;
+        Paint.bold(title, Paint.center_x(title, size), HUD + (ROWS * CELL) / 2 - size - 10, size, TEXT);
+
+        let sub: [*]const char = "Esc to resume";
+        DrawText(sub, Paint.center_x(sub, 18), HUD + (ROWS * CELL) / 2 + 20, 18, TEXT_DIM);
+    }
+
+    fn draw_over(*const self) void {
+        DrawRectangle(0, 0, SCREEN_W, SCREEN_H, SHADE);
+        Game.draw_notice(
+            "GAME OVER",
+            @as([*]const char, TextFormat("SCORE %i", self.score)),
+            "Press \"R\" to restart",
+            TEXT,
+        );
+    }
+
+    fn draw_win(*const self) void {
+        DrawRectangle(0, 0, SCREEN_W, SCREEN_H, SHADE);
+        Game.draw_notice(
+            "YOU WIN",
+            @as([*]const char, TextFormat("SCORE %i", self.score)),
+            "Press \"R\" to restart",
+            ACCENT,
+        );
+    }
+
+    fn draw_notice(title: [*]const char, mid: [*]const char, sub: [*]const char, accent: Color) void {
+        let title_size: i32 = 64;
+        let mid_size: i32 = 26;
+        let sub_size: i32 = 20;
+        let gap: i32 = 14;
+        let pad_x: i32 = 48;
+        let pad_y: i32 = 30;
+
+        let title_w = Paint.width(title, title_size);
+        let mid_w = Paint.width(mid, mid_size);
+        let sub_w = Paint.width(sub, sub_size);
+        let inner = if (title_w > mid_w) { title_w } else { mid_w };
+        if (sub_w > inner) {
+            inner = sub_w;
+        }
+        let panel_w = inner + pad_x * 2;
+        let panel_h = title_size + mid_size + sub_size + gap * 2 + pad_y * 2;
+        let panel_x = (SCREEN_W - panel_w) / 2;
+        let panel_y = HUD + (ROWS * CELL - panel_h) / 2;
+
+        Paint.panel(panel_x, panel_y, panel_w, panel_h);
+        let y = panel_y + pad_y;
+        Paint.bold(title, (SCREEN_W - title_w) / 2, y, title_size, accent);
+        y += title_size + gap;
+        DrawText(mid, (SCREEN_W - mid_w) / 2, y, mid_size, TEXT);
+        y += mid_size + gap;
+        DrawText(sub, (SCREEN_W - sub_w) / 2, y, sub_size, TEXT_DIM);
     }
 
     fn draw_grid() void {
@@ -114,42 +348,22 @@ pub struct Game {
         }
     }
 
-    fn draw_hud(*const self) void {
-        DrawRectangle(0, 0, SCREEN_W, HUD, PANEL);
-        DrawRectangle(0, HUD - 1, SCREEN_W, 1, BORDER);
-        DrawText("SCORE", 16, 16, 16, TEXT_DIM);
-        DrawText(
-            @as([*]const char, TextFormat("%i", self.score)),
-            16 + Paint.width("SCORE", 16) + 10,
-            12,
-            22,
-            ACCENT,
-        );
-        let fps = @as([*]const char, TextFormat("FPS %i", GetFPS()));
-        DrawText(fps, SCREEN_W - 16 - Paint.width(fps, 16), 17, 16, TEXT_DIM);
+    fn arrow(x: i32, cy: i32, size: i32, up: bool) void {
+        let half = @as(f32, size) / 2.0;
+        let cx = @as(f32, x) + half;
+        let y = @as(f32, cy);
+        let dir: f32 = if (up) { -1.0 } else { 1.0 };
+        let tip = Vector2 { .x = cx, .y = y + dir * half * 0.6 };
+        let left = Vector2 { .x = cx - half, .y = y - dir * half * 0.6 };
+        let right = Vector2 { .x = cx + half, .y = y - dir * half * 0.6 };
+        DrawLineEx(left, tip, 2.5, TEXT_DIM);
+        DrawLineEx(right, tip, 2.5, TEXT_DIM);
     }
 
-    fn draw_over() void {
-        DrawRectangle(0, 0, SCREEN_W, SCREEN_H, SHADE);
-
-        let title: [*]const char = "GAME OVER";
-        let sub: [*]const char = "Press \"R\" to restart";
-        let title_size: i32 = 64;
-        let sub_size: i32 = 22;
-        let gap: i32 = 16;
-        let pad_x: i32 = 44;
-        let pad_y: i32 = 30;
-
-        let title_w = Paint.width(title, title_size);
-        let sub_w = Paint.width(sub, sub_size);
-        let inner = if (title_w > sub_w) { title_w } else { sub_w };
-        let panel_w = inner + pad_x * 2;
-        let panel_h = title_size + gap + sub_size + pad_y * 2;
-        let panel_x = (SCREEN_W - panel_w) / 2;
-        let panel_y = HUD + (ROWS * CELL - panel_h) / 2;
-
-        Paint.panel(panel_x, panel_y, panel_w, panel_h);
-        Paint.bold(title, Paint.center_x(title, title_size), panel_y + pad_y, title_size, TEXT);
-        DrawText(sub, Paint.center_x(sub, sub_size), panel_y + pad_y + title_size + gap, sub_size, TEXT_DIM);
+    fn mode_label(wrap: bool) [*]const char {
+        if (wrap) {
+            return "MODE  WRAP";
+        }
+        return "MODE  WALLS";
     }
 }

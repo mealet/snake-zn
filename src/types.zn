@@ -1,6 +1,16 @@
 use zaylib.types;
 use snake.config;
 
+pub enum GameState {
+    Menu,
+    Playing,
+    Paused,
+    Over,
+    Win,
+}
+
+implement Copy : GameState {}
+
 pub struct Point {
     pub x: i32,
     pub y: i32,
@@ -31,6 +41,13 @@ pub struct Point {
 
     pub fn inside(self) bool {
         return self.x >= 0 && self.x < COLS && self.y >= 0 && self.y < ROWS;
+    }
+
+    pub fn wrap(self) Point {
+        return Point {
+            .x = (self.x + COLS) % COLS,
+            .y = (self.y + ROWS) % ROWS,
+        };
     }
 }
 

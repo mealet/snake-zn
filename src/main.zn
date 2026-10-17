@@ -1,4 +1,5 @@
 use zaylib.core;
+use zaylib.enums;
 use snake.config;
 use snake.game;
 
@@ -6,10 +7,12 @@ fn main() i32 {
     InitWindow(SCREEN_W, SCREEN_H, "Zeen Snake");
     SetTargetFPS(60);
     SetRandomSeed(@as(u32, 2024));
+    SetExitKey(KEY_NULL);
 
     let game = Game.spawn();
 
-    while (!WindowShouldClose()) {
+    while (!WindowShouldClose() && !game.quit) {
+        game.hotkeys();
         game.input();
         game.update(GetFrameTime());
 
