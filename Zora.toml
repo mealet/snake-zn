@@ -1,0 +1,8 @@
+[package]
+name = "snake"
+version = "0.0.0"
+zeen = "^0.3.0"
+type = "bin"
+
+[dependencies]
+zaylib = "file:///home/mealet/projects/zaylib"
