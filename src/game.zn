@@ -1,0 +1,155 @@
+use zaylib.types;
+use zaylib.core;
+use zaylib.enums;
+use zaylib.shapes;
+use zaylib.text;
+use snake.config;
+use snake.types;
+use snake.util;
+use snake.snake;
+use snake.food;
+
+pub struct Game {
+    pub snake: Snake,
+    pub food: Food,
+    pub score: i32,
+    pub over: bool,
+
+    pub fn spawn() Game {
+        let game = Game {
+            .snake = Snake.spawn(),
+            .food = Food.random(),
+            .score = 0,
+            .over = false,
+        };
+        game.avoid_snake();
+        return game;
+    }
+
+    pub fn restart(*self) void {
+        self.snake.reset();
+        self.score = 0;
+        self.over = false;
+        self.food = Food.random();
+        self.avoid_snake();
+    }
+
+    fn avoid_snake(*self) void {
+        let guard: i32 = 0;
+        while (guard < 256) {
+            if (!self.snake.occupies(self.food.cell)) {
+                break;
+            }
+            self.food = Food.random();
+            guard += 1;
+        }
+    }
+
+    pub fn input(*self) void {
+        if (self.over) {
+            if (IsKeyPressed(KEY_R)) {
+                self.restart();
+            }
+        } else {
+            if (IsKeyPressed(KEY_UP)) {
+                self.snake.turn(Point { .x = 0, .y = -1 });
+            }
+            if (IsKeyPressed(KEY_DOWN)) {
+                self.snake.turn(Point { .x = 0, .y = 1 });
+            }
+            if (IsKeyPressed(KEY_LEFT)) {
+                self.snake.turn(Point { .x = -1, .y = 0 });
+            }
+            if (IsKeyPressed(KEY_RIGHT)) {
+                self.snake.turn(Point { .x = 1, .y = 0 });
+            }
+        }
+    }
+
+    pub fn update(*self, dt: f32) void {
+        if (!self.over) {
+            if (self.snake.tick(dt)) {
+                self.step();
+            }
+        }
+    }
+
+    fn step(*self) void {
+        self.snake.commit();
+        let head = self.snake.next_head();
+        let eating = head.eq(self.food.cell);
+        if (!head.inside() || self.snake.hits_self(head, eating)) {
+            self.over = true;
+        } else {
+            self.snake.advance(head, eating);
+            if (eating) {
+                self.score += 10;
+                self.snake.speed_up();
+                self.food = Food.random();
+                self.avoid_snake();
+            }
+        }
+    }
+
+    pub fn draw(*const self) void {
+        Game.draw_grid();
+        self.food.draw();
+        self.snake.draw();
+        self.draw_hud();
+        if (self.over) {
+            Game.draw_over();
+        }
+    }
+
+    fn draw_grid() void {
+        let c: i32 = 0;
+        while (c <= COLS) {
+            DrawLine(c * CELL, HUD, c * CELL, SCREEN_H, GRID);
+            c += 1;
+        }
+        let r: i32 = 0;
+        while (r <= ROWS) {
+            DrawLine(0, HUD + r * CELL, SCREEN_W, HUD + r * CELL, GRID);
+            r += 1;
+        }
+    }
+
+    fn draw_hud(*const self) void {
+        DrawRectangle(0, 0, SCREEN_W, HUD, PANEL);
+        DrawRectangle(0, HUD - 1, SCREEN_W, 1, BORDER);
+        DrawText("SCORE", 16, 16, 16, TEXT_DIM);
+        DrawText(
+            @as([*]const char, TextFormat("%i", self.score)),
+            16 + Paint.width("SCORE", 16) + 10,
+            12,
+            22,
+            ACCENT,
+        );
+        let fps = @as([*]const char, TextFormat("FPS %i", GetFPS()));
+        DrawText(fps, SCREEN_W - 16 - Paint.width(fps, 16), 17, 16, TEXT_DIM);
+    }
+
+    fn draw_over() void {
+        DrawRectangle(0, 0, SCREEN_W, SCREEN_H, SHADE);
+
+        let title: [*]const char = "GAME OVER";
+        let sub: [*]const char = "Press \"R\" to restart";
+        let title_size: i32 = 64;
+        let sub_size: i32 = 22;
+        let gap: i32 = 16;
+        let pad_x: i32 = 44;
+        let pad_y: i32 = 30;
+
+        let title_w = Paint.width(title, title_size);
+        let sub_w = Paint.width(sub, sub_size);
+        let inner = if (title_w > sub_w) { title_w } else { sub_w };
+        let panel_w = inner + pad_x * 2;
+        let panel_h = title_size + gap + sub_size + pad_y * 2;
+        let panel_x = (SCREEN_W - panel_w) / 2;
+        let panel_y = HUD + (ROWS * CELL - panel_h) / 2;
+
+        Paint.panel(panel_x, panel_y, panel_w, panel_h);
+        Paint.bold(title, Paint.center_x(title, title_size), panel_y + pad_y, title_size, TEXT);
+        DrawText(sub, Paint.center_x(sub, sub_size), panel_y + pad_y + title_size + gap, sub_size, TEXT_DIM);
+    }
+}

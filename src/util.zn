@@ -1,0 +1,62 @@
+use zaylib.types;
+use zaylib.core;
+use zaylib.shapes;
+use zaylib.text;
+use snake.config;
+
+pub struct Paint {
+    pub fn mix(a: Color, b: Color, t: f32) Color {
+        let u = Paint.clamp01(t);
+        return Color {
+            .r = @as(u8, @as(f32, a.r) + (@as(f32, b.r) - @as(f32, a.r)) * u),
+            .g = @as(u8, @as(f32, a.g) + (@as(f32, b.g) - @as(f32, a.g)) * u),
+            .b = @as(u8, @as(f32, a.b) + (@as(f32, b.b) - @as(f32, a.b)) * u),
+            .a = 255,
+        };
+    }
+
+    pub fn fade(c: Color, alpha: f32) Color {
+        return Color { .r = c.r, .g = c.g, .b = c.b, .a = @as(u8, Paint.clamp01(alpha) * 255.0) };
+    }
+
+    pub fn clamp01(t: f32) f32 {
+        if (t < 0.0) {
+            return 0.0;
+        }
+        if (t > 1.0) {
+            return 1.0;
+        }
+        return t;
+    }
+
+    pub fn bold(text: [*]const char, x: i32, y: i32, size: i32, color: Color) void {
+        let dx: i32 = 0;
+        while (dx <= size / 40) {
+            let dy: i32 = 0;
+            while (dy <= size / 60) {
+                DrawText(text, x + dx, y + dy, size, color);
+                dy += 1;
+            }
+            dx += 1;
+        }
+    }
+
+    pub fn panel(x: i32, y: i32, w: i32, h: i32) void {
+        let rec = Rectangle {
+            .x = @as(f32, x),
+            .y = @as(f32, y),
+            .width = @as(f32, w),
+            .height = @as(f32, h),
+        };
+        DrawRectangleRounded(rec, 0.10, 10, PANEL);
+        DrawRectangleRoundedLinesEx(rec, 0.10, 10, 1.0, BORDER);
+    }
+
+    pub fn center_x(text: [*]const char, size: i32) i32 {
+        return (SCREEN_W - MeasureText(text, size)) / 2;
+    }
+
+    pub fn width(text: [*]const char, size: i32) i32 {
+        return MeasureText(text, size);
+    }
+}
