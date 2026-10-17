@@ -2,6 +2,7 @@ use zaylib.types;
 use zaylib.core;
 use zaylib.enums;
 use zaylib.shapes;
+
 use snake.config;
 use snake.types;
 use snake.util;
@@ -35,9 +36,11 @@ pub struct Food {
     fn draw_plain(self) void {
         let center = self.cell.center();
         let radius = @as(f32, CELL) * 0.30 * (0.88 + 0.18 * Paint.wave(3.2));
+
         BeginBlendMode(BLEND_ADDITIVE);
         DrawCircleGradient(center, radius * 2.8, Paint.fade(FOOD, 0.20), Paint.fade(FOOD, 0.0));
         EndBlendMode();
+
         DrawCircleV(center, radius, FOOD);
         Food.shine(center, radius, FOOD);
     }
@@ -47,11 +50,14 @@ pub struct Food {
         let pulse = 0.90 + 0.12 * Paint.wave(4.2);
         let radius = @as(f32, CELL) * 0.32 * pulse;
         let urgency: f32 = if (frac < 0.28) { 0.40 + 0.60 * Paint.wave(7.0) } else { 1.0 };
+
         BeginBlendMode(BLEND_ADDITIVE);
         DrawCircleGradient(center, radius * 3.4, Paint.fade(GOLD, 0.32 * urgency), Paint.fade(GOLD, 0.0));
         EndBlendMode();
+
         DrawCircleV(center, radius, Paint.fade(GOLD, urgency));
         Food.shine(center, radius, Paint.fade(GOLD, urgency));
+
         DrawCircleSectorLines(center, radius + 8.0, -90.0, -90.0 + 360.0 * Paint.clamp01(frac), 40, Paint.fade(GOLD, 0.75));
     }
 

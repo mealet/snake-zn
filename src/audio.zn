@@ -1,4 +1,5 @@
 use zaylib.types;
+
 use zaylib.audio;
 
 const EAT: [*]const char = "assets/sounds/eat.wav";
@@ -26,6 +27,7 @@ pub struct Audio {
 
     pub fn load() Audio {
         InitAudioDevice();
+
         return Audio {
             .ready = IsAudioDeviceReady(),
             .eat = LoadSound(EAT),
@@ -43,6 +45,7 @@ pub struct Audio {
         if (!self.ready) {
             return;
         }
+
         UnloadSound(self.eat);
         UnloadSound(self.gold);
         UnloadSound(self.death);
@@ -51,11 +54,13 @@ pub struct Audio {
         UnloadSound(self.select);
         UnloadSound(self.pause);
         UnloadSound(self.resume);
+
         CloseAudioDevice();
     }
 
     pub fn eat_sound(*const self, combo: i32) void {
         let boost = if (combo > PITCH_MAX) { PITCH_MAX } else { combo };
+
         Audio.fire(self.ready, self.eat, 0.45, 1.0 + PITCH_STEP * @as(f32, boost));
     }
 
@@ -91,6 +96,7 @@ pub struct Audio {
         if (!ready) {
             return;
         }
+
         SetSoundVolume(sound, volume);
         SetSoundPitch(sound, pitch);
         PlaySound(sound);

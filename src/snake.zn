@@ -2,9 +2,12 @@ use zaylib.types;
 use zaylib.core;
 use zaylib.enums;
 use zaylib.shapes;
+
 use snake.config;
 use snake.types;
 use snake.util;
+
+const QUEUE_MAX: i32 = 3;
 
 pub struct Snake {
     pub body: [400]Point,
@@ -31,7 +34,9 @@ pub struct Snake {
             .grew = false,
             .moved = false,
         };
+
         snake.reset();
+
         return snake;
     }
 
@@ -40,10 +45,12 @@ pub struct Snake {
         self.body[0] = Point { .x = 10, .y = 10 };
         self.body[1] = Point { .x = 9, .y = 10 };
         self.body[2] = Point { .x = 8, .y = 10 };
+
         self.dir = Point { .x = 1, .y = 0 };
         self.queue_len = 0;
         self.timer = 0.0;
         self.step = STEP_START;
+
         self.tail_prev = self.body[2];
         self.grew = false;
         self.moved = false;
@@ -57,7 +64,8 @@ pub struct Snake {
         };
         let same = d.x == last.x && d.y == last.y;
         let opposite = d.x + last.x == 0 && d.y + last.y == 0;
-        if (!same && !opposite && self.queue_len < 3) {
+
+        if (!same && !opposite && self.queue_len < QUEUE_MAX) {
             self.queue[@as(usize, self.queue_len)] = d;
             self.queue_len += 1;
         }
@@ -66,21 +74,25 @@ pub struct Snake {
     pub fn commit(*self) void {
         if (self.queue_len > 0) {
             self.dir = self.queue[0];
+
             let i: i32 = 0;
             while (i < self.queue_len - 1) {
                 self.queue[@as(usize, i)] = self.queue[@as(usize, i + 1)];
                 i += 1;
             }
+
             self.queue_len -= 1;
         }
     }
 
     pub fn tick(*self, dt: f32) bool {
         self.timer += dt;
+
         if (self.timer >= self.step) {
             self.timer = 0.0;
             return true;
         }
+
         return false;
     }
 
@@ -92,12 +104,15 @@ pub struct Snake {
         self.tail_prev = self.body[@as(usize, self.len - 1)];
         self.grew = grow;
         self.moved = true;
+
         let j = if (grow) { self.len } else { self.len - 1 };
         while (j > 0) {
             self.body[@as(usize, j)] = self.body[@as(usize, j - 1)];
             j -= 1;
         }
+
         self.body[0] = next;
+
         if (grow) {
             self.len += 1;
         }
@@ -107,40 +122,48 @@ pub struct Snake {
         if (!self.moved) {
             return self.body[@as(usize, i)];
         }
+
         if (i < self.len - 1) {
             return self.body[@as(usize, i + 1)];
         }
+
         if (self.grew) {
             return self.body[@as(usize, i)];
         }
+
         return self.tail_prev;
     }
 
     pub fn occupies(*const self, cell: Point) bool {
         let i: i32 = 0;
+
         while (i < self.len) {
             if (self.body[@as(usize, i)].eq(cell)) {
                 return true;
             }
             i += 1;
         }
+
         return false;
     }
 
     pub fn hits_self(*const self, head: Point, eating: bool) bool {
         let limit = if (eating) { self.len } else { self.len - 1 };
         let i: i32 = 0;
+
         while (i < limit) {
             if (self.body[@as(usize, i)].eq(head)) {
                 return true;
             }
             i += 1;
         }
+
         return false;
     }
 
     pub fn speed_up(*self) void {
         self.step -= STEP_DEC;
+
         if (self.step < STEP_MIN) {
             self.step = STEP_MIN;
         }
@@ -149,8 +172,10 @@ pub struct Snake {
     pub fn draw(*const self, alpha: f32) void {
         let travel = if (self.step > STEP_REST) { self.step - STEP_REST } else { self.step };
         let t = Paint.clamp01(self.timer / travel);
+
         let span = if (self.len > 1) { self.len - 1 } else { 1 };
         let base = @as(f32, CELL) - PAD * 2.0;
+
         let head_center = self.body[0].slide(self.prev_cell(0), t);
         Snake.halo(head_center, @as(f32, CELL) * 0.90 * (0.9 + 0.10 * Paint.wave(2.6)), SNAKE_HEAD, 0.22 * alpha);
 
@@ -165,14 +190,17 @@ pub struct Snake {
             } else {
                 Paint.mix(SNAKE_HEAD, SNAKE_TAIL, frac)
             };
+
             DrawRectangleRounded(
                 Rectangle { .x = center.x - inset, .y = center.y - inset, .width = size, .height = size },
                 0.35,
                 10,
                 Paint.fade(color, alpha),
             );
+
             i -= 1;
         }
+
         self.draw_eyes(head_center, alpha);
     }
 
@@ -186,11 +214,13 @@ pub struct Snake {
         let fwd = @as(f32, CELL) * 0.17;
         let side = @as(f32, CELL) * 0.19;
         let radius = @as(f32, CELL) * 0.10;
+
         let fx = @as(f32, self.dir.x) * fwd;
         let fy = @as(f32, self.dir.y) * fwd;
         let sx = -@as(f32, self.dir.y) * side;
         let sy = @as(f32, self.dir.x) * side;
         let eye = Paint.fade(EYE, alpha);
+
         DrawCircleV(Vector2 { .x = center.x + fx + sx, .y = center.y + fy + sy }, radius, eye);
         DrawCircleV(Vector2 { .x = center.x + fx - sx, .y = center.y + fy - sy }, radius, eye);
     }

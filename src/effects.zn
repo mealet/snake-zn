@@ -3,11 +3,14 @@ use zaylib.core;
 use zaylib.shapes;
 use zaylib.enums;
 use zaylib.text;
+
 use snake.config;
 use snake.util;
 
 const CAPACITY: i32 = 160;
 const POPS: i32 = 16;
+
+const OLDEST_START: f32 = 99999.0;
 
 pub struct Particle {
     pub x: f32,
@@ -41,7 +44,7 @@ pub struct Effects {
     pub flash_color: Color,
 
     pub fn new() Effects {
-        let fx = Effects {
+        return Effects {
             .parts = [Particle {
                 .x = 0.0,
                 .y = 0.0,
@@ -64,7 +67,6 @@ pub struct Effects {
             .flash_alpha = 0.0,
             .flash_color = WHITE,
         };
-        return fx;
     }
 
     pub fn clear(*self) void {
@@ -73,11 +75,13 @@ pub struct Effects {
             self.parts[@as(usize, i)].life = 0.0;
             i += 1;
         }
+
         let p: i32 = 0;
         while (p < POPS) {
             self.pops[@as(usize, p)].life = 0.0;
             p += 1;
         }
+
         self.shake = 0.0;
         self.flash_alpha = 0.0;
     }
@@ -99,6 +103,7 @@ pub struct Effects {
         if (self.shake <= 0.0) {
             return Vector2 { .x = 0.0, .y = 0.0 };
         }
+
         return Vector2 {
             .x = @as(f32, GetRandomValue(-100, 100)) / 100.0 * self.shake,
             .y = @as(f32, GetRandomValue(-100, 100)) / 100.0 * self.shake,
@@ -107,12 +112,14 @@ pub struct Effects {
 
     pub fn burst(*self, center: Vector2, color: Color, count: i32, speed: f32, size: f32) void {
         let i: i32 = 0;
+
         while (i < count) {
             let dx = @as(f32, GetRandomValue(-100, 100)) / 100.0;
             let dy = @as(f32, GetRandomValue(-100, 100)) / 100.0;
             let speed_jitter = speed * (0.30 + @as(f32, GetRandomValue(0, 100)) / 140.0);
             let life = 0.40 + @as(f32, GetRandomValue(0, 45)) / 100.0;
             let jitter = @as(f32, GetRandomValue(-4, 4));
+
             self.emit(
                 center.x + jitter,
                 center.y + jitter,
@@ -122,12 +129,14 @@ pub struct Effects {
                 size,
                 color,
             );
+
             i += 1;
         }
     }
 
     pub fn popup(*self, at: Vector2, value: i32, color: Color) void {
         let slot = self.free_pop();
+
         self.pops[@as(usize, slot)] = Popup {
             .x = at.x,
             .y = at.y - 12.0,
@@ -140,6 +149,7 @@ pub struct Effects {
 
     fn emit(*self, x: f32, y: f32, vx: f32, vy: f32, life: f32, size: f32, color: Color) void {
         let slot = self.free_slot();
+
         self.parts[@as(usize, slot)] = Particle {
             .x = x,
             .y = y,
@@ -154,47 +164,60 @@ pub struct Effects {
 
     fn free_slot(*const self) i32 {
         let best = 0;
-        let oldest: f32 = 99999.0;
+        let oldest = OLDEST_START;
+
         let i: i32 = 0;
         while (i < CAPACITY) {
             let life = self.parts[@as(usize, i)].life;
+
             if (life <= 0.0) {
                 return i;
             }
+
             if (life < oldest) {
                 oldest = life;
                 best = i;
             }
+
             i += 1;
         }
+
         return best;
     }
 
     fn free_pop(*const self) i32 {
         let best = 0;
-        let oldest: f32 = 99999.0;
+        let oldest = OLDEST_START;
+
         let i: i32 = 0;
         while (i < POPS) {
             let life = self.pops[@as(usize, i)].life;
+
             if (life <= 0.0) {
                 return i;
             }
+
             if (life < oldest) {
                 oldest = life;
                 best = i;
             }
+
             i += 1;
         }
+
         return best;
     }
 
     pub fn update(*self, dt: f32) void {
         let decay = Paint.clamp01(1.0 - 7.0 * dt);
         self.shake = self.shake * decay;
+
         if (self.shake < 0.12) {
             self.shake = 0.0;
         }
+
         self.flash_alpha = self.flash_alpha * Paint.clamp01(1.0 - 4.5 * dt);
+
         if (self.flash_alpha < 0.01) {
             self.flash_alpha = 0.0;
         }
@@ -202,25 +225,30 @@ pub struct Effects {
         let i: i32 = 0;
         while (i < CAPACITY) {
             let part = self.parts[@as(usize, i)];
+
             if (part.life > 0.0) {
                 self.step_part(i, part, dt);
             }
+
             i += 1;
         }
 
         let p: i32 = 0;
         while (p < POPS) {
             let pop = self.pops[@as(usize, p)];
+
             if (pop.life > 0.0) {
                 self.pops[@as(usize, p)].life = pop.life - dt;
                 self.pops[@as(usize, p)].y = pop.y - 34.0 * dt;
             }
+
             p += 1;
         }
     }
 
     fn step_part(*self, index: i32, part: Particle, dt: f32) void {
         let life = part.life - dt;
+
         if (life <= 0.0) {
             self.parts[@as(usize, index)].life = 0.0;
         } else {
@@ -234,30 +262,39 @@ pub struct Effects {
 
     pub fn draw(*const self) void {
         BeginBlendMode(BLEND_ADDITIVE);
+
         let i: i32 = 0;
         while (i < CAPACITY) {
             let part = self.parts[@as(usize, i)];
+
             if (part.life > 0.0) {
                 let fade = Paint.clamp01(part.life / part.max);
                 let radius = part.size * (0.30 + 0.70 * fade);
+
                 DrawCircleV(Vector2 { .x = part.x, .y = part.y }, radius, Paint.fade(part.color, fade));
             }
+
             i += 1;
         }
+
         EndBlendMode();
     }
 
     pub fn draw_pops(*const self, paint: *const Paint) void {
         let i: i32 = 0;
+
         while (i < POPS) {
             let pop = self.pops[@as(usize, i)];
+
             if (pop.life > 0.0) {
                 let fade = Paint.clamp01(pop.life / pop.max);
                 let text = @as([*]const char, TextFormat("+%i", pop.value));
                 let size: i32 = 22;
                 let x = @as(i32, pop.x) - paint.heavy_width(text, size) / 2;
+
                 paint.heavy_text(text, x, @as(i32, pop.y), size, Paint.fade(pop.color, fade));
             }
+
             i += 1;
         }
     }

@@ -1,4 +1,5 @@
 use zaylib.types;
+
 use snake.config;
 
 pub enum GameState {
@@ -15,15 +16,6 @@ pub struct Point {
     pub x: i32,
     pub y: i32,
 
-    pub fn rect(self) Rectangle {
-        return Rectangle {
-            .x = @as(f32, self.x * CELL) + PAD,
-            .y = @as(f32, self.y * CELL + HUD) + PAD,
-            .width = @as(f32, CELL) - PAD * 2.0,
-            .height = @as(f32, CELL) - PAD * 2.0,
-        };
-    }
-
     pub fn center(self) Vector2 {
         return Vector2 {
             .x = @as(f32, self.x * CELL) + @as(f32, CELL) / 2.0,
@@ -36,6 +28,7 @@ pub struct Point {
         let u: f32 = if (jump) { 1.0 } else { t };
         let fx = @as(f32, from.x) + (@as(f32, self.x) - @as(f32, from.x)) * u;
         let fy = @as(f32, from.y) + (@as(f32, self.y) - @as(f32, from.y)) * u;
+
         return Vector2 {
             .x = fx * @as(f32, CELL) + @as(f32, CELL) / 2.0,
             .y = fy * @as(f32, CELL) + @as(f32, HUD) + @as(f32, CELL) / 2.0,

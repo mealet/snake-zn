@@ -1,9 +1,10 @@
 use zaylib.core;
 use zaylib.enums;
+
 use snake.config;
 use snake.game;
 
-fn main() i32 {
+fn main() {
     InitWindow(SCREEN_W, SCREEN_H, "Zeen Snake");
     SetTargetFPS(60);
     SetRandomSeed(@as(u32, 2024));
@@ -24,5 +25,4 @@ fn main() i32 {
 
     game.audio.unload();
     CloseWindow();
-    return 0;
 }

@@ -3,7 +3,6 @@ use zaylib.types;
 pub const CELL: i32 = 30;
 pub const COLS: i32 = 20;
 pub const ROWS: i32 = 20;
-pub const MAXLEN: i32 = 400;
 pub const HUD: i32 = 48;
 
 pub const SCREEN_W: i32 = COLS * CELL;
@@ -16,10 +15,14 @@ pub const STEP_MIN: f32 = 0.070;
 pub const STEP_DEC: f32 = 0.005;
 pub const STEP_REST: f32 = 0.02;
 
+pub const EAT_SCORE: i32 = 10;
+
 pub const COMBO_WINDOW: f32 = 2.6;
 pub const COMBO_MAX: i32 = 8;
+
 pub const GOLD_CHANCE: i32 = 26;
 pub const GOLD_LIFE: f32 = 6.0;
+pub const GOLD_SPARK: f32 = 0.16;
 pub const GOLD_SCORE: i32 = 50;
 
 pub const FIELD: Color = Color { .r = 30, .g = 30, .b = 30, .a = 255 };

@@ -3,6 +3,7 @@ use zaylib.core;
 use zaylib.enums;
 use zaylib.shapes;
 use zaylib.text;
+
 use snake.config;
 use snake.types;
 use snake.util;
@@ -15,6 +16,9 @@ const ITEM_PLAY: i32 = 0;
 const ITEM_MODE: i32 = 1;
 const ITEM_QUIT: i32 = 2;
 const MENU_ITEMS: i32 = 3;
+
+const PLACE_TRIES: i32 = 256;
+const REVEAL_DELAY: f32 = 0.55;
 
 pub struct Game {
     pub snake: Snake,
@@ -55,7 +59,9 @@ pub struct Game {
             .shots = 0,
             .quit = false,
         };
+
         game.avoid_snake();
+
         return game;
     }
 
@@ -63,6 +69,7 @@ pub struct Game {
         if (IsKeyPressed(KEY_F11)) {
             ToggleFullscreen();
         }
+
         if (IsKeyPressed(KEY_F12)) {
             self.shots += 1;
             TakeScreenshot(@as([*]const char, TextFormat("snake_%i.png", self.shots)));
@@ -74,10 +81,12 @@ pub struct Game {
             .Menu => {
                 if (IsKeyPressed(KEY_UP)) { self.menu_move(-1); }
                 if (IsKeyPressed(KEY_DOWN)) { self.menu_move(1); }
+
                 if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) { self.menu_select(); }
             },
             .Playing => {
                 self.steer();
+
                 if (IsKeyPressed(KEY_ESCAPE)) {
                     self.state = GameState.Paused;
                     self.audio.pause_sound();
@@ -88,6 +97,7 @@ pub struct Game {
                     self.state = GameState.Playing;
                     self.audio.resume_sound();
                 }
+
                 if (IsKeyPressed(KEY_Q)) {
                     self.state = GameState.Menu;
                     self.audio.resume_sound();
@@ -102,10 +112,12 @@ pub struct Game {
         if (self.is_playing()) {
             self.step_combo(dt);
             self.step_gold(dt);
+
             if (self.snake.tick(dt)) {
                 self.step();
             }
         }
+
         if (!self.is_paused() && !self.is_menu()) {
             self.effects.update(dt);
             self.death_t += dt;
@@ -122,11 +134,13 @@ pub struct Game {
                 .rotation = 0.0,
                 .zoom = 1.0,
             };
+
             BeginMode2D(camera);
             self.draw_world();
             self.effects.draw();
             self.effects.draw_pops(&self.paint);
             EndMode2D();
+
             self.draw_hud();
             self.effects.draw_flash();
             self.draw_overlay();
@@ -146,6 +160,7 @@ pub struct Game {
         self.combo_time = 0.0;
         self.gold_life = 0.0;
         self.death_t = 0.0;
+
         self.food = Food.random();
         self.avoid_snake();
     }
@@ -186,6 +201,7 @@ pub struct Game {
 
     fn menu_select(*self) void {
         self.audio.select_sound();
+
         switch (self.menu) {
             ITEM_PLAY => { self.start(); },
             ITEM_MODE => { self.wrap = !self.wrap; },
@@ -199,6 +215,7 @@ pub struct Game {
             self.audio.select_sound();
             self.start();
         }
+
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) {
             self.state = GameState.Menu;
             self.audio.resume_sound();
@@ -209,12 +226,15 @@ pub struct Game {
         if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
             self.snake.turn(Point { .x = 0, .y = -1 });
         }
+
         if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
             self.snake.turn(Point { .x = 0, .y = 1 });
         }
+
         if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
             self.snake.turn(Point { .x = -1, .y = 0 });
         }
+
         if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
             self.snake.turn(Point { .x = 1, .y = 0 });
         }
@@ -222,10 +242,12 @@ pub struct Game {
 
     fn avoid_snake(*self) void {
         let guard: i32 = 0;
-        while (guard < 256) {
+
+        while (guard < PLACE_TRIES) {
             if (!self.snake.occupies(self.food.cell)) {
                 break;
             }
+
             self.food = Food.random();
             guard += 1;
         }
@@ -233,20 +255,26 @@ pub struct Game {
 
     fn step(*self) void {
         self.snake.commit();
+
         let head = self.snake.next_head();
+
         if (self.wrap) {
             head = head.wrap();
         }
+
         let eating = head.eq(self.food.cell);
         let golden = self.gold_life > 0.0 && head.eq(self.gold.cell);
         let grow = eating || golden;
+
         if (!head.inside() || self.snake.hits_self(head, grow)) {
             self.die();
         } else {
             self.snake.advance(head, grow);
+
             if (eating) {
                 self.on_eat();
             }
+
             if (golden) {
                 self.on_gold();
             }
@@ -257,6 +285,7 @@ pub struct Game {
         self.state = GameState.Over;
         self.death_t = 0.0;
         self.audio.death_sound();
+
         self.effects.kick(16.0);
         self.effects.flash(0.55, DANGER);
         self.explode(DANGER);
@@ -266,6 +295,7 @@ pub struct Game {
         self.state = GameState.Win;
         self.death_t = 0.0;
         self.audio.win_sound();
+
         self.effects.kick(11.0);
         self.effects.flash(0.42, GOLD);
         self.explode(GOLD);
@@ -274,11 +304,14 @@ pub struct Game {
     fn explode(*self, spark: Color) void {
         let span = if (self.snake.len > 1) { self.snake.len - 1 } else { 1 };
         let step = if (self.snake.len > 20) { 2 } else { 1 };
+
         let i: i32 = 0;
         while (i < self.snake.len) {
             let frac = @as(f32, i) / @as(f32, span);
             let color = Paint.mix(Paint.mix(SNAKE_HEAD, SNAKE_TAIL, frac), spark, 0.35);
+
             self.effects.burst(self.snake.body[@as(usize, i)].center(), color, 3, 175.0, 3.2);
+
             i += step;
         }
     }
@@ -287,23 +320,29 @@ pub struct Game {
         if (self.is_over()) {
             return 0.35 + 0.65 * Paint.clamp01(1.0 - self.death_t / 0.8);
         }
+
         return 1.0;
     }
 
     fn on_eat(*self) void {
         let at = self.food.cell.center();
+
         self.bump_combo();
         self.audio.eat_sound(self.combo);
-        let points = 10 * self.combo;
+
+        let points = EAT_SCORE * self.combo;
         self.score += points;
+
         self.effects.popup(at, points, ACCENT);
         self.effects.burst(at, FOOD, 16, 190.0, 3.4);
         self.effects.burst(at, ACCENT, 7, 120.0, 2.4);
         self.effects.kick(3.5);
+
         self.snake.speed_up();
         self.food = Food.random();
         self.avoid_snake();
         self.maybe_spawn_gold();
+
         if (self.snake.len >= COLS * ROWS) {
             self.win();
         }
@@ -311,29 +350,36 @@ pub struct Game {
 
     fn on_gold(*self) void {
         let at = self.gold.cell.center();
+
         self.bump_combo();
         self.audio.gold_sound();
+
         self.score += GOLD_SCORE;
+
         self.effects.popup(at, GOLD_SCORE, GOLD);
         self.effects.burst(at, GOLD, 26, 240.0, 4.2);
         self.effects.burst(at, WHITE, 10, 140.0, 2.8);
         self.effects.kick(7.0);
         self.effects.flash(0.30, GOLD);
+
         self.snake.speed_up();
         self.gold_life = 0.0;
     }
 
     fn bump_combo(*self) void {
         self.combo += 1;
+
         if (self.combo > COMBO_MAX) {
             self.combo = COMBO_MAX;
         }
+
         self.combo_time = COMBO_WINDOW;
     }
 
     fn step_combo(*self, dt: f32) void {
         if (self.combo_time > 0.0) {
             self.combo_time -= dt;
+
             if (self.combo_time <= 0.0) {
                 self.combo_time = 0.0;
                 self.combo = 0;
@@ -344,12 +390,15 @@ pub struct Game {
     fn step_gold(*self, dt: f32) void {
         if (self.gold_life > 0.0) {
             self.gold_life -= dt;
+
             if (self.gold_life <= 0.0) {
                 self.gold_life = 0.0;
             } else {
                 self.gold_spark -= dt;
+
                 if (self.gold_spark <= 0.0) {
-                    self.gold_spark = 0.16;
+                    self.gold_spark = GOLD_SPARK;
+
                     let at = self.gold.cell.center();
                     self.effects.burst(
                         Vector2 {
@@ -377,21 +426,26 @@ pub struct Game {
     fn gold_cell(*const self) Point {
         let cell = Food.random().cell;
         let guard: i32 = 0;
-        while (guard < 256) {
+
+        while (guard < PLACE_TRIES) {
             if (!self.snake.occupies(cell) && !cell.eq(self.food.cell)) {
                 break;
             }
+
             cell = Food.random().cell;
             guard += 1;
         }
+
         return cell;
     }
 
     fn draw_world(*const self) void {
         Game.draw_grid();
+
         if (self.gold_life > 0.0) {
             self.gold.draw(Paint.clamp01(self.gold_life / GOLD_LIFE));
         }
+
         self.food.draw(1.0);
         self.snake.draw(self.snake_alpha());
     }
@@ -399,31 +453,38 @@ pub struct Game {
     fn draw_hud(*const self) void {
         DrawRectangle(0, 0, SCREEN_W, HUD, PANEL);
         DrawRectangle(0, HUD - 1, SCREEN_W, 1, BORDER);
+
         self.paint.text("SCORE", 16, 16, 16, TEXT_DIM);
 
         let score_text = @as([*]const char, TextFormat("%i", self.score));
         let score_w = self.paint.width(score_text, 22);
         let score_x = 16 + self.paint.width("SCORE", 16) + 10;
+
         self.paint.heavy_text(score_text, score_x, 12, 22, ACCENT);
         self.draw_combo(score_x + score_w + 22);
 
-        let mode: [*]const char = if (self.wrap) { @as([*]const char, "WRAP") } else { @as([*]const char, "WALLS") };
+        let mode = Game.mode_short(self.wrap);
         self.paint.text(mode, SCREEN_W / 2 - self.paint.width(mode, 16) / 2, 16, 16, TEXT_DIM);
     }
 
     fn draw_combo(*const self, x: i32) void {
-        if (self.combo >= 2) {
-            let text = @as([*]const char, TextFormat("x%i", self.combo));
-            self.paint.heavy_text(text, x, 14, 20, GOLD);
-            let bar_w: i32 = 48;
-            let frac = Paint.clamp01(self.combo_time / COMBO_WINDOW);
-            DrawRectangle(x, 41, bar_w, 3, Paint.fade(GOLD, 0.22));
-            DrawRectangle(x, 41, @as(i32, @as(f32, bar_w) * frac), 3, GOLD);
+        if (self.combo < 2) {
+            return;
         }
+
+        let text = @as([*]const char, TextFormat("x%i", self.combo));
+        self.paint.heavy_text(text, x, 14, 20, GOLD);
+
+        let bar_w: i32 = 48;
+        let frac = Paint.clamp01(self.combo_time / COMBO_WINDOW);
+
+        DrawRectangle(x, 41, bar_w, 3, Paint.fade(GOLD, 0.22));
+        DrawRectangle(x, 41, @as(i32, @as(f32, bar_w) * frac), 3, GOLD);
     }
 
     fn draw_overlay(*const self) void {
-        let revealed = self.death_t > 0.55;
+        let revealed = self.death_t > REVEAL_DELAY;
+
         switch (self.state) {
             .Paused => { self.draw_paused(); },
             .Over => {
@@ -445,6 +506,7 @@ pub struct Game {
         let width = self.paint.width(text, size);
         let x = (SCREEN_W - width) / 2;
         let active = index == self.menu;
+
         if (active) {
             DrawRectangleRounded(
                 Rectangle {
@@ -458,17 +520,21 @@ pub struct Game {
                 Paint.fade(ACCENT, 0.16),
             );
         }
+
         let color = if (active) { ACCENT } else { TEXT_DIM };
+
         self.paint.text(text, x, y, size, color);
     }
 
     fn draw_menu(*const self) void {
         let title: [*]const char = "ZEEN SNAKE";
         let title_size: i32 = 72;
+
         self.paint.heavy_text(title, self.paint.heavy_center_x(title, title_size), 108, title_size, SNAKE_HEAD);
 
         let y0: i32 = 300;
         let gap: i32 = 64;
+
         self.draw_menu_item("PLAY", ITEM_PLAY, y0);
         self.draw_menu_item(Game.mode_label(self.wrap), ITEM_MODE, y0 + gap);
         self.draw_menu_item("QUIT", ITEM_QUIT, y0 + gap * 2);
@@ -479,6 +545,7 @@ pub struct Game {
     fn draw_hint(*const self) void {
         let hint: [*]const char = "Navigate With ↓ / ↑";
         let size: i32 = 20;
+
         self.paint.text(hint, self.paint.center_x(hint, size), SCREEN_H - 62, size, TEXT_DIM);
     }
 
@@ -487,6 +554,7 @@ pub struct Game {
 
         let title: [*]const char = "PAUSED";
         let size: i32 = 56;
+
         self.paint.heavy_text(
             title,
             self.paint.heavy_center_x(title, size),
@@ -496,6 +564,7 @@ pub struct Game {
         );
 
         let sub: [*]const char = "Esc to resume";
+
         self.paint.text(sub, self.paint.center_x(sub, 18), HUD + (ROWS * CELL) / 2 + 20, 18, TEXT_DIM);
     }
 
@@ -531,15 +600,18 @@ pub struct Game {
         let mid_w = self.paint.width(mid, mid_size);
         let sub_w = self.paint.width(sub, sub_size);
         let inner = if (title_w > mid_w) { title_w } else { mid_w };
+
         if (sub_w > inner) {
             inner = sub_w;
         }
+
         let panel_w = inner + pad_x * 2;
         let panel_h = title_size + mid_size + sub_size + gap * 2 + pad_y * 2;
         let panel_x = (SCREEN_W - panel_w) / 2;
         let panel_y = HUD + (ROWS * CELL - panel_h) / 2;
 
         Paint.panel(panel_x, panel_y, panel_w, panel_h);
+
         let y = panel_y + pad_y;
         self.paint.heavy_text(title, (SCREEN_W - title_w) / 2, y, title_size, accent);
         y += title_size + gap;
@@ -554,6 +626,7 @@ pub struct Game {
             DrawLine(c * CELL, HUD, c * CELL, SCREEN_H, GRID);
             c += 1;
         }
+
         let r: i32 = 0;
         while (r <= ROWS) {
             DrawLine(0, HUD + r * CELL, SCREEN_W, HUD + r * CELL, GRID);
@@ -565,6 +638,15 @@ pub struct Game {
         if (wrap) {
             return "MODE  WRAP";
         }
+
         return "MODE  WALLS";
+    }
+
+    fn mode_short(wrap: bool) [*]const char {
+        if (wrap) {
+            return "WRAP";
+        }
+
+        return "WALLS";
     }
 }

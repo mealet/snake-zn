@@ -4,6 +4,7 @@ use zaylib.enums;
 use zaylib.shapes;
 use zaylib.text;
 use zaylib.textures;
+
 use snake.config;
 
 const FONT_REGULAR: [*]const char = "assets/JetBrainsMono-Regular.ttf";
@@ -25,16 +26,20 @@ pub struct Paint {
     fn face(path: [*]const char) Font {
         let cps: [99]i32 = [0; 99];
         let i: i32 = 0;
+
         while (i < 95) {
             cps[@as(usize, i)] = 32 + i;
             i += 1;
         }
+
         cps[95] = 8592;
         cps[96] = 8593;
         cps[97] = 8594;
         cps[98] = 8595;
+
         let font = LoadFontEx(path, BASE_SIZE, @as([*]const i32, &cps[0]), GLYPHS);
         SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
+
         return font;
     }
 
@@ -69,12 +74,14 @@ pub struct Paint {
             .width = @as(f32, w),
             .height = @as(f32, h),
         };
+
         DrawRectangleRounded(rec, 0.10, 10, PANEL);
         DrawRectangleRoundedLinesEx(rec, 0.10, 10, 1.0, BORDER);
     }
 
     pub fn mix(a: Color, b: Color, t: f32) Color {
         let u = Paint.clamp01(t);
+
         return Color {
             .r = @as(u8, @as(f32, a.r) + (@as(f32, b.r) - @as(f32, a.r)) * u),
             .g = @as(u8, @as(f32, a.g) + (@as(f32, b.g) - @as(f32, a.g)) * u),
@@ -91,18 +98,22 @@ pub struct Paint {
         if (t < 0.0) {
             return 0.0;
         }
+
         if (t > 1.0) {
             return 1.0;
         }
+
         return t;
     }
 
     pub fn wave(speed: f32) f32 {
         let t = @as(f32, GetTime()) * speed;
         let frac = t - @as(f32, @as(i32, t));
+
         if (frac < 0.5) {
             return frac * 2.0;
         }
+
         return (1.0 - frac) * 2.0;
     }
 }
