@@ -31,6 +31,17 @@ pub struct Point {
         };
     }
 
+    pub fn slide(self, from: Point, t: f32) Vector2 {
+        let jump = (self.x - from.x) > 1 || (from.x - self.x) > 1 || (self.y - from.y) > 1 || (from.y - self.y) > 1;
+        let u: f32 = if (jump) { 1.0 } else { t };
+        let fx = @as(f32, from.x) + (@as(f32, self.x) - @as(f32, from.x)) * u;
+        let fy = @as(f32, from.y) + (@as(f32, self.y) - @as(f32, from.y)) * u;
+        return Vector2 {
+            .x = fx * @as(f32, CELL) + @as(f32, CELL) / 2.0,
+            .y = fy * @as(f32, CELL) + @as(f32, HUD) + @as(f32, CELL) / 2.0,
+        };
+    }
+
     pub fn eq(self, other: Point) bool {
         return self.x == other.x && self.y == other.y;
     }

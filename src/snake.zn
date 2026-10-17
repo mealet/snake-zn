@@ -11,6 +11,9 @@ pub struct Snake {
     pub pending: Point,
     pub timer: f32,
     pub step: f32,
+    pub tail_prev: Point,
+    pub grew: bool,
+    pub moved: bool,
 
     pub fn spawn() Snake {
         let snake = Snake {
@@ -20,6 +23,9 @@ pub struct Snake {
             .pending = Point { .x = 1, .y = 0 },
             .timer = 0.0,
             .step = STEP_START,
+            .tail_prev = Point { .x = 0, .y = 0 },
+            .grew = false,
+            .moved = false,
         };
         snake.reset();
         return snake;
@@ -34,6 +40,9 @@ pub struct Snake {
         self.pending = self.dir;
         self.timer = 0.0;
         self.step = STEP_START;
+        self.tail_prev = self.body[2];
+        self.grew = false;
+        self.moved = false;
     }
 
     pub fn turn(*self, d: Point) void {
@@ -63,6 +72,9 @@ pub struct Snake {
     }
 
     pub fn advance(*self, next: Point, grow: bool) void {
+        self.tail_prev = self.body[@as(usize, self.len - 1)];
+        self.grew = grow;
+        self.moved = true;
         let j = if (grow) { self.len } else { self.len - 1 };
         while (j > 0) {
             self.body[@as(usize, j)] = self.body[@as(usize, j - 1)];
@@ -72,6 +84,19 @@ pub struct Snake {
         if (grow) {
             self.len += 1;
         }
+    }
+
+    pub fn prev_cell(*const self, i: i32) Point {
+        if (!self.moved) {
+            return self.body[@as(usize, i)];
+        }
+        if (i < self.len - 1) {
+            return self.body[@as(usize, i + 1)];
+        }
+        if (self.grew) {
+            return self.body[@as(usize, i)];
+        }
+        return self.tail_prev;
     }
 
     pub fn occupies(*const self, cell: Point) bool {
@@ -105,17 +130,39 @@ pub struct Snake {
     }
 
     pub fn draw(*const self) void {
+        let t = Paint.clamp01(self.timer / self.step);
         let span = if (self.len > 1) { self.len - 1 } else { 1 };
-        let i: i32 = 0;
-        while (i < self.len) {
-            let cell = self.body[@as(usize, i)];
-            if (i == 0) {
-                DrawRectangleRounded(cell.rect(), 0.45, 12, Paint.mix(SNAKE_HEAD, WHITE, 0.15));
+        let size = @as(f32, CELL) - PAD * 2.0;
+        let inset = size / 2.0;
+        let i = self.len - 1;
+        while (i >= 0) {
+            let center = self.body[@as(usize, i)].slide(self.prev_cell(i), t);
+            let color = if (i == 0) {
+                Paint.mix(SNAKE_HEAD, WHITE, 0.15)
             } else {
-                let color = Paint.mix(SNAKE_HEAD, SNAKE_TAIL, @as(f32, i) / @as(f32, span));
-                DrawRectangleRounded(cell.rect(), 0.35, 10, color);
-            }
-            i += 1;
+                Paint.mix(SNAKE_HEAD, SNAKE_TAIL, @as(f32, i) / @as(f32, span))
+            };
+            DrawRectangleRounded(
+                Rectangle { .x = center.x - inset, .y = center.y - inset, .width = size, .height = size },
+                0.35,
+                10,
+                color,
+            );
+            i -= 1;
         }
+        self.draw_eyes(t);
+    }
+
+    fn draw_eyes(*const self, t: f32) void {
+        let center = self.body[0].slide(self.prev_cell(0), t);
+        let fwd = @as(f32, CELL) * 0.17;
+        let side = @as(f32, CELL) * 0.19;
+        let radius = @as(f32, CELL) * 0.10;
+        let fx = @as(f32, self.dir.x) * fwd;
+        let fy = @as(f32, self.dir.y) * fwd;
+        let sx = -@as(f32, self.dir.y) * side;
+        let sy = @as(f32, self.dir.x) * side;
+        DrawCircleV(Vector2 { .x = center.x + fx + sx, .y = center.y + fy + sy }, radius, EYE);
+        DrawCircleV(Vector2 { .x = center.x + fx - sx, .y = center.y + fy - sy }, radius, EYE);
     }
 }
