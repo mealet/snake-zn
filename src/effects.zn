@@ -247,7 +247,7 @@ pub struct Effects {
         EndBlendMode();
     }
 
-    pub fn draw_pops(*const self) void {
+    pub fn draw_pops(*const self, paint: *const Paint) void {
         let i: i32 = 0;
         while (i < POPS) {
             let pop = self.pops[@as(usize, i)];
@@ -255,8 +255,8 @@ pub struct Effects {
                 let fade = Paint.clamp01(pop.life / pop.max);
                 let text = @as([*]const char, TextFormat("+%i", pop.value));
                 let size: i32 = 22;
-                let x = @as(i32, pop.x) - Paint.width(text, size) / 2;
-                Paint.bold(text, x, @as(i32, pop.y), size, Paint.fade(pop.color, fade));
+                let x = @as(i32, pop.x) - paint.heavy_width(text, size) / 2;
+                paint.heavy_text(text, x, @as(i32, pop.y), size, Paint.fade(pop.color, fade));
             }
             i += 1;
         }
