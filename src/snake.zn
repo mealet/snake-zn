@@ -10,7 +10,8 @@ pub struct Snake {
     pub body: [400]Point,
     pub len: i32,
     pub dir: Point,
-    pub pending: Point,
+    pub queue: [3]Point,
+    pub queue_len: i32,
     pub timer: f32,
     pub step: f32,
     pub tail_prev: Point,
@@ -22,7 +23,8 @@ pub struct Snake {
             .body = [Point { .x = 0, .y = 0 }; 400],
             .len = 0,
             .dir = Point { .x = 1, .y = 0 },
-            .pending = Point { .x = 1, .y = 0 },
+            .queue = [Point { .x = 1, .y = 0 }; 3],
+            .queue_len = 0,
             .timer = 0.0,
             .step = STEP_START,
             .tail_prev = Point { .x = 0, .y = 0 },
@@ -39,7 +41,7 @@ pub struct Snake {
         self.body[1] = Point { .x = 9, .y = 10 };
         self.body[2] = Point { .x = 8, .y = 10 };
         self.dir = Point { .x = 1, .y = 0 };
-        self.pending = self.dir;
+        self.queue_len = 0;
         self.timer = 0.0;
         self.step = STEP_START;
         self.tail_prev = self.body[2];
@@ -48,16 +50,29 @@ pub struct Snake {
     }
 
     pub fn turn(*self, d: Point) void {
-        if (d.x != 0 && self.dir.x == 0) {
-            self.pending = d;
-        }
-        if (d.y != 0 && self.dir.y == 0) {
-            self.pending = d;
+        let last = if (self.queue_len > 0) {
+            self.queue[@as(usize, self.queue_len - 1)]
+        } else {
+            self.dir
+        };
+        let same = d.x == last.x && d.y == last.y;
+        let opposite = d.x + last.x == 0 && d.y + last.y == 0;
+        if (!same && !opposite && self.queue_len < 3) {
+            self.queue[@as(usize, self.queue_len)] = d;
+            self.queue_len += 1;
         }
     }
 
     pub fn commit(*self) void {
-        self.dir = self.pending;
+        if (self.queue_len > 0) {
+            self.dir = self.queue[0];
+            let i: i32 = 0;
+            while (i < self.queue_len - 1) {
+                self.queue[@as(usize, i)] = self.queue[@as(usize, i + 1)];
+                i += 1;
+            }
+            self.queue_len -= 1;
+        }
     }
 
     pub fn tick(*self, dt: f32) bool {
