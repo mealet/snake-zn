@@ -147,7 +147,8 @@ pub struct Snake {
     }
 
     pub fn draw(*const self, alpha: f32) void {
-        let t = Paint.clamp01(self.timer / (self.step * STEP_ANIM));
+        let travel = if (self.step > STEP_REST) { self.step - STEP_REST } else { self.step };
+        let t = Paint.clamp01(self.timer / travel);
         let span = if (self.len > 1) { self.len - 1 } else { 1 };
         let base = @as(f32, CELL) - PAD * 2.0;
         let head_center = self.body[0].slide(self.prev_cell(0), t);

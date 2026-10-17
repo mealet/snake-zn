@@ -14,7 +14,7 @@ pub const PAD: f32 = 2.0;
 pub const STEP_START: f32 = 0.17;
 pub const STEP_MIN: f32 = 0.070;
 pub const STEP_DEC: f32 = 0.005;
-pub const STEP_ANIM: f32 = 0.55;
+pub const STEP_REST: f32 = 0.02;
 
 pub const COMBO_WINDOW: f32 = 2.6;
 pub const COMBO_MAX: i32 = 8;
