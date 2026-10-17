@@ -131,12 +131,12 @@ pub struct Snake {
         }
     }
 
-    pub fn draw(*const self) void {
+    pub fn draw(*const self, alpha: f32) void {
         let t = Paint.clamp01(self.timer / self.step);
         let span = if (self.len > 1) { self.len - 1 } else { 1 };
         let base = @as(f32, CELL) - PAD * 2.0;
         let head_center = self.body[0].slide(self.prev_cell(0), t);
-        Snake.halo(head_center, @as(f32, CELL) * 0.90 * (0.9 + 0.10 * Paint.wave(2.6)), SNAKE_HEAD, 0.22);
+        Snake.halo(head_center, @as(f32, CELL) * 0.90 * (0.9 + 0.10 * Paint.wave(2.6)), SNAKE_HEAD, 0.22 * alpha);
 
         let i = self.len - 1;
         while (i >= 0) {
@@ -153,11 +153,11 @@ pub struct Snake {
                 Rectangle { .x = center.x - inset, .y = center.y - inset, .width = size, .height = size },
                 0.35,
                 10,
-                color,
+                Paint.fade(color, alpha),
             );
             i -= 1;
         }
-        self.draw_eyes(head_center);
+        self.draw_eyes(head_center, alpha);
     }
 
     fn halo(center: Vector2, radius: f32, color: Color, strength: f32) void {
@@ -166,7 +166,7 @@ pub struct Snake {
         EndBlendMode();
     }
 
-    fn draw_eyes(*const self, center: Vector2) void {
+    fn draw_eyes(*const self, center: Vector2, alpha: f32) void {
         let fwd = @as(f32, CELL) * 0.17;
         let side = @as(f32, CELL) * 0.19;
         let radius = @as(f32, CELL) * 0.10;
@@ -174,7 +174,8 @@ pub struct Snake {
         let fy = @as(f32, self.dir.y) * fwd;
         let sx = -@as(f32, self.dir.y) * side;
         let sy = @as(f32, self.dir.x) * side;
-        DrawCircleV(Vector2 { .x = center.x + fx + sx, .y = center.y + fy + sy }, radius, EYE);
-        DrawCircleV(Vector2 { .x = center.x + fx - sx, .y = center.y + fy - sy }, radius, EYE);
+        let eye = Paint.fade(EYE, alpha);
+        DrawCircleV(Vector2 { .x = center.x + fx + sx, .y = center.y + fy + sy }, radius, eye);
+        DrawCircleV(Vector2 { .x = center.x + fx - sx, .y = center.y + fy - sy }, radius, eye);
     }
 }

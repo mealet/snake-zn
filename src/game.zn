@@ -28,6 +28,7 @@ pub struct Game {
     pub combo_time: f32,
     pub gold_life: f32,
     pub gold_spark: f32,
+    pub death_t: f32,
     pub shots: i32,
     pub quit: bool,
 
@@ -45,6 +46,7 @@ pub struct Game {
             .combo_time = 0.0,
             .gold_life = 0.0,
             .gold_spark = 0.0,
+            .death_t = 0.0,
             .shots = 0,
             .quit = false,
         };
@@ -92,6 +94,7 @@ pub struct Game {
         }
         if (!self.is_paused() && !self.is_menu()) {
             self.effects.update(dt);
+            self.death_t += dt;
         }
     }
 
@@ -128,6 +131,7 @@ pub struct Game {
         self.combo = 0;
         self.combo_time = 0.0;
         self.gold_life = 0.0;
+        self.death_t = 0.0;
         self.food = Food.random();
         self.avoid_snake();
     }
@@ -149,6 +153,14 @@ pub struct Game {
     fn is_paused(*const self) bool {
         return switch (self.state) {
             .Paused => true,
+            _ => false,
+        };
+    }
+
+    fn is_over(*const self) bool {
+        return switch (self.state) {
+            .Over => true,
+            .Win => true,
             _ => false,
         };
     }
@@ -207,7 +219,7 @@ pub struct Game {
         let golden = self.gold_life > 0.0 && head.eq(self.gold.cell);
         let grow = eating || golden;
         if (!head.inside() || self.snake.hits_self(head, grow)) {
-            self.state = GameState.Over;
+            self.die();
         } else {
             self.snake.advance(head, grow);
             if (eating) {
@@ -217,6 +229,41 @@ pub struct Game {
                 self.on_gold();
             }
         }
+    }
+
+    fn die(*self) void {
+        self.state = GameState.Over;
+        self.death_t = 0.0;
+        self.effects.kick(16.0);
+        self.effects.flash(0.55, DANGER);
+        self.explode(DANGER);
+    }
+
+    fn win(*self) void {
+        self.state = GameState.Win;
+        self.death_t = 0.0;
+        self.effects.kick(11.0);
+        self.effects.flash(0.42, GOLD);
+        self.explode(GOLD);
+    }
+
+    fn explode(*self, spark: Color) void {
+        let span = if (self.snake.len > 1) { self.snake.len - 1 } else { 1 };
+        let step = if (self.snake.len > 20) { 2 } else { 1 };
+        let i: i32 = 0;
+        while (i < self.snake.len) {
+            let frac = @as(f32, i) / @as(f32, span);
+            let color = Paint.mix(Paint.mix(SNAKE_HEAD, SNAKE_TAIL, frac), spark, 0.35);
+            self.effects.burst(self.snake.body[@as(usize, i)].center(), color, 3, 175.0, 3.2);
+            i += step;
+        }
+    }
+
+    fn snake_alpha(*const self) f32 {
+        if (self.is_over()) {
+            return 0.35 + 0.65 * Paint.clamp01(1.0 - self.death_t / 0.8);
+        }
+        return 1.0;
     }
 
     fn on_eat(*self) void {
@@ -233,7 +280,7 @@ pub struct Game {
         self.avoid_snake();
         self.maybe_spawn_gold();
         if (self.snake.len >= COLS * ROWS) {
-            self.state = GameState.Win;
+            self.win();
         }
     }
 
@@ -320,7 +367,7 @@ pub struct Game {
             self.gold.draw(Paint.clamp01(self.gold_life / GOLD_LIFE));
         }
         self.food.draw(1.0);
-        self.snake.draw();
+        self.snake.draw(self.snake_alpha());
     }
 
     fn draw_hud(*const self) void {
@@ -353,10 +400,19 @@ pub struct Game {
     }
 
     fn draw_overlay(*const self) void {
+        let revealed = self.death_t > 0.55;
         switch (self.state) {
             .Paused => { self.draw_paused(); },
-            .Over => { self.draw_over(); },
-            .Win => { self.draw_win(); },
+            .Over => {
+                if (revealed) {
+                    self.draw_over();
+                }
+            },
+            .Win => {
+                if (revealed) {
+                    self.draw_win();
+                }
+            },
             _ => {},
         }
     }

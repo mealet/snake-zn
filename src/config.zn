@@ -37,3 +37,4 @@ pub const TEXT_DIM: Color = Color { .r = 133, .g = 133, .b = 133, .a = 255 };
 pub const ACCENT: Color = Color { .r = 78, .g = 201, .b = 176, .a = 255 };
 pub const WHITE: Color = Color { .r = 255, .g = 255, .b = 255, .a = 255 };
 pub const EYE: Color = Color { .r = 16, .g = 22, .b = 32, .a = 255 };
+pub const DANGER: Color = Color { .r = 214, .g = 62, .b = 62, .a = 255 };
