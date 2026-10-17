@@ -6,6 +6,7 @@ use zaylib.text;
 use snake.config;
 use snake.types;
 use snake.util;
+use snake.audio;
 use snake.snake;
 use snake.food;
 use snake.effects;
@@ -21,6 +22,7 @@ pub struct Game {
     pub gold: Food,
     pub effects: Effects,
     pub paint: Paint,
+    pub audio: Audio,
     pub state: GameState,
     pub menu: i32,
     pub wrap: bool,
@@ -40,6 +42,7 @@ pub struct Game {
             .gold = Food.random(),
             .effects = Effects.new(),
             .paint = Paint.load(),
+            .audio = Audio.load(),
             .state = GameState.Menu,
             .menu = ITEM_PLAY,
             .wrap = false,
@@ -75,11 +78,20 @@ pub struct Game {
             },
             .Playing => {
                 self.steer();
-                if (IsKeyPressed(KEY_ESCAPE)) { self.state = GameState.Paused; }
+                if (IsKeyPressed(KEY_ESCAPE)) {
+                    self.state = GameState.Paused;
+                    self.audio.pause_sound();
+                }
             },
             .Paused => {
-                if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) { self.state = GameState.Playing; }
-                if (IsKeyPressed(KEY_Q)) { self.state = GameState.Menu; }
+                if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) {
+                    self.state = GameState.Playing;
+                    self.audio.resume_sound();
+                }
+                if (IsKeyPressed(KEY_Q)) {
+                    self.state = GameState.Menu;
+                    self.audio.resume_sound();
+                }
             },
             .Over => { self.end_input(); },
             .Win => { self.end_input(); },
@@ -169,9 +181,11 @@ pub struct Game {
 
     fn menu_move(*self, delta: i32) void {
         self.menu = (self.menu + delta + MENU_ITEMS) % MENU_ITEMS;
+        self.audio.move_sound();
     }
 
     fn menu_select(*self) void {
+        self.audio.select_sound();
         switch (self.menu) {
             ITEM_PLAY => { self.start(); },
             ITEM_MODE => { self.wrap = !self.wrap; },
@@ -181,8 +195,14 @@ pub struct Game {
     }
 
     fn end_input(*self) void {
-        if (IsKeyPressed(KEY_R)) { self.start(); }
-        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) { self.state = GameState.Menu; }
+        if (IsKeyPressed(KEY_R)) {
+            self.audio.select_sound();
+            self.start();
+        }
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) {
+            self.state = GameState.Menu;
+            self.audio.resume_sound();
+        }
     }
 
     fn steer(*self) void {
@@ -236,6 +256,7 @@ pub struct Game {
     fn die(*self) void {
         self.state = GameState.Over;
         self.death_t = 0.0;
+        self.audio.death_sound();
         self.effects.kick(16.0);
         self.effects.flash(0.55, DANGER);
         self.explode(DANGER);
@@ -244,6 +265,7 @@ pub struct Game {
     fn win(*self) void {
         self.state = GameState.Win;
         self.death_t = 0.0;
+        self.audio.win_sound();
         self.effects.kick(11.0);
         self.effects.flash(0.42, GOLD);
         self.explode(GOLD);
@@ -271,6 +293,7 @@ pub struct Game {
     fn on_eat(*self) void {
         let at = self.food.cell.center();
         self.bump_combo();
+        self.audio.eat_sound(self.combo);
         let points = 10 * self.combo;
         self.score += points;
         self.effects.popup(at, points, ACCENT);
@@ -289,6 +312,7 @@ pub struct Game {
     fn on_gold(*self) void {
         let at = self.gold.cell.center();
         self.bump_combo();
+        self.audio.gold_sound();
         self.score += GOLD_SCORE;
         self.effects.popup(at, GOLD_SCORE, GOLD);
         self.effects.burst(at, GOLD, 26, 240.0, 4.2);

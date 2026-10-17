@@ -1,0 +1,98 @@
+use zaylib.types;
+use zaylib.audio;
+
+const EAT: [*]const char = "assets/sounds/eat.wav";
+const GOLD: [*]const char = "assets/sounds/gold.wav";
+const DEATH: [*]const char = "assets/sounds/death.wav";
+const WIN: [*]const char = "assets/sounds/win.wav";
+const MOVE: [*]const char = "assets/sounds/move.wav";
+const SELECT: [*]const char = "assets/sounds/select.wav";
+const PAUSE: [*]const char = "assets/sounds/pause.wav";
+const RESUME: [*]const char = "assets/sounds/resume.wav";
+
+const PITCH_STEP: f32 = 0.055;
+const PITCH_MAX: i32 = 8;
+
+pub struct Audio {
+    pub ready: bool,
+    pub eat: Sound,
+    pub gold: Sound,
+    pub death: Sound,
+    pub win: Sound,
+    pub move: Sound,
+    pub select: Sound,
+    pub pause: Sound,
+    pub resume: Sound,
+
+    pub fn load() Audio {
+        InitAudioDevice();
+        return Audio {
+            .ready = IsAudioDeviceReady(),
+            .eat = LoadSound(EAT),
+            .gold = LoadSound(GOLD),
+            .death = LoadSound(DEATH),
+            .win = LoadSound(WIN),
+            .move = LoadSound(MOVE),
+            .select = LoadSound(SELECT),
+            .pause = LoadSound(PAUSE),
+            .resume = LoadSound(RESUME),
+        };
+    }
+
+    pub fn unload(*const self) void {
+        if (!self.ready) {
+            return;
+        }
+        UnloadSound(self.eat);
+        UnloadSound(self.gold);
+        UnloadSound(self.death);
+        UnloadSound(self.win);
+        UnloadSound(self.move);
+        UnloadSound(self.select);
+        UnloadSound(self.pause);
+        UnloadSound(self.resume);
+        CloseAudioDevice();
+    }
+
+    pub fn eat_sound(*const self, combo: i32) void {
+        let boost = if (combo > PITCH_MAX) { PITCH_MAX } else { combo };
+        Audio.fire(self.ready, self.eat, 0.45, 1.0 + PITCH_STEP * @as(f32, boost));
+    }
+
+    pub fn gold_sound(*const self) void {
+        Audio.fire(self.ready, self.gold, 0.55, 1.0);
+    }
+
+    pub fn death_sound(*const self) void {
+        Audio.fire(self.ready, self.death, 0.70, 1.0);
+    }
+
+    pub fn win_sound(*const self) void {
+        Audio.fire(self.ready, self.win, 0.70, 1.0);
+    }
+
+    pub fn move_sound(*const self) void {
+        Audio.fire(self.ready, self.move, 0.35, 1.0);
+    }
+
+    pub fn select_sound(*const self) void {
+        Audio.fire(self.ready, self.select, 0.55, 1.0);
+    }
+
+    pub fn pause_sound(*const self) void {
+        Audio.fire(self.ready, self.pause, 0.55, 1.0);
+    }
+
+    pub fn resume_sound(*const self) void {
+        Audio.fire(self.ready, self.resume, 0.55, 1.0);
+    }
+
+    fn fire(ready: bool, sound: Sound, volume: f32, pitch: f32) void {
+        if (!ready) {
+            return;
+        }
+        SetSoundVolume(sound, volume);
+        SetSoundPitch(sound, pitch);
+        PlaySound(sound);
+    }
+}
