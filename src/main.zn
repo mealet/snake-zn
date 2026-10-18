@@ -6,13 +6,13 @@ use snake.game;
 
 fn main() {
     @os[android] {
-        InitWindow(0, 0, "Zeen Snake");
+        InitWindow(0, 0, "ZeenSnake");
     } else {
-        InitWindow(SCREEN_W, SCREEN_H, "Zeen Snake");
+        InitWindow(SCREEN_W, SCREEN_H, "ZeenSnake");
     }
 
     SetTargetFPS(60);
-    SetRandomSeed(@as(u32, 2024));
+    SetRandomSeed(2024);
     SetExitKey(KEY_NULL);
 
     let game = Game.spawn();
