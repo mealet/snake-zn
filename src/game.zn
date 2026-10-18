@@ -17,7 +17,6 @@ const ITEM_MODE: i32 = 1;
 const ITEM_QUIT: i32 = 2;
 const MENU_ITEMS: i32 = 3;
 
-const PLACE_TRIES: i32 = 256;
 const REVEAL_DELAY: f32 = 0.55;
 
 pub struct Game {
@@ -42,8 +41,8 @@ pub struct Game {
     pub fn spawn() Game {
         let game = Game {
             .snake = Snake.spawn(),
-            .food = Food.random(),
-            .gold = Food.random(),
+            .food = Food.at(Point { .x = 0, .y = 0 }),
+            .gold = Food.at(Point { .x = 0, .y = 0 }),
             .effects = Effects.new(),
             .paint = Paint.load(),
             .audio = Audio.load(),
@@ -60,7 +59,7 @@ pub struct Game {
             .quit = false,
         };
 
-        game.avoid_snake();
+        game.place_food();
 
         return game;
     }
@@ -161,8 +160,7 @@ pub struct Game {
         self.gold_life = 0.0;
         self.death_t = 0.0;
 
-        self.food = Food.random();
-        self.avoid_snake();
+        self.place_food();
     }
 
     fn is_menu(*const self) bool {
@@ -240,17 +238,44 @@ pub struct Game {
         }
     }
 
-    fn avoid_snake(*self) void {
-        let guard: i32 = 0;
+    fn place_food(*self) void {
+        let cell = self.free_cell(Option.None);
 
-        while (guard < PLACE_TRIES) {
-            if (!self.snake.occupies(self.food.cell)) {
-                break;
+        if (cell.is_some()) {
+            self.food = Food.at(cell.unwrap());
+        }
+    }
+
+    fn free_cell(*const self, blocked: Option[Point]) Option[Point] {
+        let pick = Point { .x = 0, .y = 0 };
+        let total: i32 = 0;
+
+        let y: i32 = 0;
+        while (y < ROWS) {
+            let x: i32 = 0;
+            while (x < COLS) {
+                let cell = Point { .x = x, .y = y };
+                let free = !self.snake.occupies(cell) && (blocked.is_none() || !cell.eq(blocked.unwrap()));
+
+                if (free) {
+                    total += 1;
+
+                    if (GetRandomValue(1, total) == 1) {
+                        pick = cell;
+                    }
+                }
+
+                x += 1;
             }
 
-            self.food = Food.random();
-            guard += 1;
+            y += 1;
         }
+
+        if (total == 0) {
+            return Option.None;
+        }
+
+        return Option.Some(pick);
     }
 
     fn step(*self) void {
@@ -277,6 +302,10 @@ pub struct Game {
 
             if (golden) {
                 self.on_gold();
+            }
+
+            if (self.snake.len >= COLS * ROWS) {
+                self.win();
             }
         }
     }
@@ -339,13 +368,8 @@ pub struct Game {
         self.effects.kick(3.5);
 
         self.snake.speed_up();
-        self.food = Food.random();
-        self.avoid_snake();
+        self.place_food();
         self.maybe_spawn_gold();
-
-        if (self.snake.len >= COLS * ROWS) {
-            self.win();
-        }
     }
 
     fn on_gold(*self) void {
@@ -416,27 +440,19 @@ pub struct Game {
     }
 
     fn maybe_spawn_gold(*self) void {
-        if (self.gold_life <= 0.0 && GetRandomValue(1, 100) <= GOLD_CHANCE) {
-            self.gold = Food.gold_at(self.gold_cell());
-            self.gold_life = GOLD_LIFE;
-            self.gold_spark = 0.0;
-        }
-    }
-
-    fn gold_cell(*const self) Point {
-        let cell = Food.random().cell;
-        let guard: i32 = 0;
-
-        while (guard < PLACE_TRIES) {
-            if (!self.snake.occupies(cell) && !cell.eq(self.food.cell)) {
-                break;
-            }
-
-            cell = Food.random().cell;
-            guard += 1;
+        if (self.gold_life > 0.0 || GetRandomValue(1, 100) > GOLD_CHANCE) {
+            return;
         }
 
-        return cell;
+        let cell = self.free_cell(Option.Some(self.food.cell));
+
+        if (cell.is_none()) {
+            return;
+        }
+
+        self.gold = Food.gold_at(cell.unwrap());
+        self.gold_life = GOLD_LIFE;
+        self.gold_spark = 0.0;
     }
 
     fn draw_world(*const self) void {

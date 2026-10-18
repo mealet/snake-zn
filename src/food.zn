@@ -11,14 +11,8 @@ pub struct Food {
     pub cell: Point,
     pub golden: bool,
 
-    pub fn random() Food {
-        return Food {
-            .cell = Point {
-                .x = GetRandomValue(0, COLS - 1),
-                .y = GetRandomValue(0, ROWS - 1),
-            },
-            .golden = false,
-        };
+    pub fn at(cell: Point) Food {
+        return Food { .cell = cell, .golden = false };
     }
 
     pub fn gold_at(cell: Point) Food {
