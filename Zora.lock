@@ -3,13 +3,13 @@ version = 2
 [[package]]
 name = "snake"
 version = "0.0.0"
-zeen = "^0.3.0"
+zeen = "^0.4.0"
 dependencies = ["zaylib@5e303226602ffbf7568416d0097e92f69ae0859a"]
 
 [[package]]
 name = "zaylib"
 version = "0.0.0"
-zeen = "^0.3.0"
+zeen = "^0.4.0"
 dependencies = []
 repository = "https://github.com/mealet/zaylib"
 branch = "main"
