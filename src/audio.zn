@@ -28,8 +28,22 @@ pub struct Audio {
     pub fn load() Audio {
         InitAudioDevice();
 
+        if (!IsAudioDeviceReady()) {
+            return Audio {
+                .ready = false,
+                .eat = @uninit(),
+                .gold = @uninit(),
+                .death = @uninit(),
+                .win = @uninit(),
+                .move = @uninit(),
+                .select = @uninit(),
+                .pause = @uninit(),
+                .resume = @uninit(),
+            };
+        }
+
         return Audio {
-            .ready = IsAudioDeviceReady(),
+            .ready = true,
             .eat = LoadSound(EAT),
             .gold = LoadSound(GOLD),
             .death = LoadSound(DEATH),
