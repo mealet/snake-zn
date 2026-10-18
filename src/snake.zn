@@ -177,7 +177,9 @@ pub struct Snake {
         let base = @as(f32, CELL) - PAD * 2.0;
 
         let head_center = self.body[0].slide(self.prev_cell(0), t);
-        Snake.halo(head_center, @as(f32, CELL) * 0.90 * (0.9 + 0.10 * Paint.wave(2.6)), SNAKE_HEAD, 0.22 * alpha);
+        let glow = @as(f32, CELL) * 0.90 * (0.9 + 0.10 * Paint.wave(2.6));
+
+        Snake.halo(head_center, glow, SNAKE_HEAD, 0.22 * alpha);
 
         let i = self.len - 1;
         while (i >= 0) {

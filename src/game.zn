@@ -412,31 +412,36 @@ pub struct Game {
     }
 
     fn step_gold(*self, dt: f32) void {
-        if (self.gold_life > 0.0) {
-            self.gold_life -= dt;
-
-            if (self.gold_life <= 0.0) {
-                self.gold_life = 0.0;
-            } else {
-                self.gold_spark -= dt;
-
-                if (self.gold_spark <= 0.0) {
-                    self.gold_spark = GOLD_SPARK;
-
-                    let at = self.gold.cell.center();
-                    self.effects.burst(
-                        Vector2 {
-                            .x = at.x + @as(f32, GetRandomValue(-10, 10)),
-                            .y = at.y + @as(f32, GetRandomValue(-10, 10)),
-                        },
-                        GOLD,
-                        2,
-                        45.0,
-                        1.7,
-                    );
-                }
-            }
+        if (self.gold_life <= 0.0) {
+            return;
         }
+
+        self.gold_life -= dt;
+
+        if (self.gold_life <= 0.0) {
+            self.gold_life = 0.0;
+            return;
+        }
+
+        self.gold_spark -= dt;
+
+        if (self.gold_spark > 0.0) {
+            return;
+        }
+
+        self.gold_spark = GOLD_SPARK;
+
+        let at = self.gold.cell.center();
+        self.effects.burst(
+            Vector2 {
+                .x = at.x + @as(f32, GetRandomValue(-10, 10)),
+                .y = at.y + @as(f32, GetRandomValue(-10, 10)),
+            },
+            GOLD,
+            2,
+            45.0,
+            1.7,
+        );
     }
 
     fn maybe_spawn_gold(*self) void {
@@ -480,7 +485,7 @@ pub struct Game {
         self.draw_combo(score_x + score_w + 22);
 
         let mode = Game.mode_short(self.wrap);
-        self.paint.text(mode, SCREEN_W / 2 - self.paint.width(mode, 16) / 2, 16, 16, TEXT_DIM);
+        self.paint.text(mode, self.paint.center_x(mode, 16), 16, 16, TEXT_DIM);
     }
 
     fn draw_combo(*const self, x: i32) void {
@@ -574,14 +579,14 @@ pub struct Game {
         self.paint.heavy_text(
             title,
             self.paint.heavy_center_x(title, size),
-            HUD + (ROWS * CELL) / 2 - size - 10,
+            Game.field_mid() - size - 10,
             size,
             TEXT,
         );
 
         let sub: [*]const char = "Esc to resume";
 
-        self.paint.text(sub, self.paint.center_x(sub, 18), HUD + (ROWS * CELL) / 2 + 20, 18, TEXT_DIM);
+        self.paint.text(sub, self.paint.center_x(sub, 18), Game.field_mid() + 20, 18, TEXT_DIM);
     }
 
     fn draw_over(*const self) void {
@@ -664,5 +669,9 @@ pub struct Game {
         }
 
         return "WALLS";
+    }
+
+    fn field_mid() i32 {
+        return HUD + (ROWS * CELL) / 2;
     }
 }

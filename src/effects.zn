@@ -11,6 +11,7 @@ const CAPACITY: i32 = 160;
 const POPS: i32 = 16;
 
 const OLDEST_START: f32 = 99999.0;
+const POPUP_LIFE: f32 = 0.85;
 
 pub struct Particle {
     pub x: f32,
@@ -141,8 +142,8 @@ pub struct Effects {
             .x = at.x,
             .y = at.y - 12.0,
             .value = value,
-            .life = 0.85,
-            .max = 0.85,
+            .life = POPUP_LIFE,
+            .max = POPUP_LIFE,
             .color = color,
         };
     }
@@ -210,13 +211,13 @@ pub struct Effects {
 
     pub fn update(*self, dt: f32) void {
         let decay = Paint.clamp01(1.0 - 7.0 * dt);
-        self.shake = self.shake * decay;
+        self.shake *= decay;
 
         if (self.shake < 0.12) {
             self.shake = 0.0;
         }
 
-        self.flash_alpha = self.flash_alpha * Paint.clamp01(1.0 - 4.5 * dt);
+        self.flash_alpha *= Paint.clamp01(1.0 - 4.5 * dt);
 
         if (self.flash_alpha < 0.01) {
             self.flash_alpha = 0.0;

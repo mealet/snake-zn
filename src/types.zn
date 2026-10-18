@@ -24,7 +24,9 @@ pub struct Point {
     }
 
     pub fn slide(self, from: Point, t: f32) Vector2 {
-        let jump = (self.x - from.x) > 1 || (from.x - self.x) > 1 || (self.y - from.y) > 1 || (from.y - self.y) > 1;
+        let dx = self.x - from.x;
+        let dy = self.y - from.y;
+        let jump = dx > 1 || dx < -1 || dy > 1 || dy < -1;
         let u: f32 = if (jump) { 1.0 } else { t };
         let fx = @as(f32, from.x) + (@as(f32, self.x) - @as(f32, from.x)) * u;
         let fy = @as(f32, from.y) + (@as(f32, self.y) - @as(f32, from.y)) * u;

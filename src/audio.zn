@@ -61,39 +61,39 @@ pub struct Audio {
     pub fn eat_sound(*const self, combo: i32) void {
         let boost = if (combo > PITCH_MAX) { PITCH_MAX } else { combo };
 
-        Audio.fire(self.ready, self.eat, 0.45, 1.0 + PITCH_STEP * @as(f32, boost));
+        self.play(self.eat, 0.45, 1.0 + PITCH_STEP * @as(f32, boost));
     }
 
     pub fn gold_sound(*const self) void {
-        Audio.fire(self.ready, self.gold, 0.55, 1.0);
+        self.play(self.gold, 0.55, 1.0);
     }
 
     pub fn death_sound(*const self) void {
-        Audio.fire(self.ready, self.death, 0.70, 1.0);
+        self.play(self.death, 0.70, 1.0);
     }
 
     pub fn win_sound(*const self) void {
-        Audio.fire(self.ready, self.win, 0.70, 1.0);
+        self.play(self.win, 0.70, 1.0);
     }
 
     pub fn move_sound(*const self) void {
-        Audio.fire(self.ready, self.move, 0.35, 1.0);
+        self.play(self.move, 0.35, 1.0);
     }
 
     pub fn select_sound(*const self) void {
-        Audio.fire(self.ready, self.select, 0.55, 1.0);
+        self.play(self.select, 0.55, 1.0);
     }
 
     pub fn pause_sound(*const self) void {
-        Audio.fire(self.ready, self.pause, 0.55, 1.0);
+        self.play(self.pause, 0.55, 1.0);
     }
 
     pub fn resume_sound(*const self) void {
-        Audio.fire(self.ready, self.resume, 0.55, 1.0);
+        self.play(self.resume, 0.55, 1.0);
     }
 
-    fn fire(ready: bool, sound: Sound, volume: f32, pitch: f32) void {
-        if (!ready) {
+    fn play(*const self, sound: Sound, volume: f32, pitch: f32) void {
+        if (!self.ready) {
             return;
         }
 
