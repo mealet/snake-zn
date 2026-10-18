@@ -18,6 +18,10 @@ const ITEM_QUIT: i32 = 2;
 const MENU_ITEMS: i32 = 3;
 
 const REVEAL_DELAY: f32 = 0.55;
+const SWIPE_MIN: f32 = 28.0;
+const MENU_TITLE_Y: i32 = @os[android] { 480 } else { 108 };
+const MENU_Y: i32 = @os[android] { 700 } else { 300 };
+const MENU_GAP: i32 = @os[android] { 68 } else { 64 };
 
 pub struct Game {
     pub snake: Snake,
@@ -37,6 +41,8 @@ pub struct Game {
     pub death_t: f32,
     pub shots: i32,
     pub quit: bool,
+    pub touch_start: Vector2,
+    pub touch_active: bool,
 
     pub fn spawn() Game {
         let game = Game {
@@ -57,6 +63,8 @@ pub struct Game {
             .death_t = 0.0,
             .shots = 0,
             .quit = false,
+            .touch_start = Vector2 { .x = 0.0, .y = 0.0 },
+            .touch_active = false,
         };
 
         game.place_food();
@@ -76,25 +84,50 @@ pub struct Game {
     }
 
     pub fn input(*self) void {
+        let view = View.current();
+        let pointer = view.pointer();
+        let gesture = self.pointer_gesture(pointer);
+
+        if (!self.is_menu() && gesture.tap) {
+            if (CheckCollisionPointRec(pointer, self.hud_menu_rect())) {
+                self.state = GameState.Menu;
+                self.audio.resume_sound();
+                return;
+            }
+
+            if (CheckCollisionPointRec(pointer, self.hud_pause_rect())) {
+                self.toggle_pause();
+                return;
+            }
+        }
+
         switch (self.state) {
             .Menu => {
                 if (IsKeyPressed(KEY_UP)) { self.menu_move(-1); }
                 if (IsKeyPressed(KEY_DOWN)) { self.menu_move(1); }
 
                 if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) { self.menu_select(); }
+
+                if (gesture.swipe.y < 0) { self.menu_move(-1); }
+                if (gesture.swipe.y > 0) { self.menu_move(1); }
+                if (gesture.tap) { self.menu_tap(pointer); }
+
+                if (IsKeyPressed(KEY_BACK)) { self.quit = true; }
             },
             .Playing => {
                 self.steer();
 
-                if (IsKeyPressed(KEY_ESCAPE)) {
-                    self.state = GameState.Paused;
-                    self.audio.pause_sound();
+                if (gesture.swipe.x != 0 || gesture.swipe.y != 0) {
+                    self.snake.turn(gesture.swipe);
+                }
+
+                if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACK)) {
+                    self.toggle_pause();
                 }
             },
             .Paused => {
-                if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) {
-                    self.state = GameState.Playing;
-                    self.audio.resume_sound();
+                if (gesture.tap || IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_BACK)) {
+                    self.toggle_pause();
                 }
 
                 if (IsKeyPressed(KEY_Q)) {
@@ -102,8 +135,32 @@ pub struct Game {
                     self.audio.resume_sound();
                 }
             },
-            .Over => { self.end_input(); },
-            .Win => { self.end_input(); },
+            .Over => {
+                self.end_input();
+
+                if (gesture.tap) {
+                    self.audio.select_sound();
+                    self.start();
+                }
+
+                if (IsKeyPressed(KEY_BACK)) {
+                    self.state = GameState.Menu;
+                    self.audio.resume_sound();
+                }
+            },
+            .Win => {
+                self.end_input();
+
+                if (gesture.tap) {
+                    self.audio.select_sound();
+                    self.start();
+                }
+
+                if (IsKeyPressed(KEY_BACK)) {
+                    self.state = GameState.Menu;
+                    self.audio.resume_sound();
+                }
+            },
         }
     }
 
@@ -124,26 +181,26 @@ pub struct Game {
     }
 
     pub fn draw(*const self) void {
+        let view = View.current();
+
         if (self.is_menu()) {
+            BeginMode2D(view.camera(Vector2 { .x = 0.0, .y = 0.0 }));
             self.draw_menu();
-        } else {
-            let camera = Camera2D {
-                .offset = self.effects.offset(),
-                .target = Vector2 { .x = 0.0, .y = 0.0 },
-                .rotation = 0.0,
-                .zoom = 1.0,
-            };
-
-            BeginMode2D(camera);
-            self.draw_world();
-            self.effects.draw();
-            self.effects.draw_pops(&self.paint);
             EndMode2D();
-
-            self.draw_hud();
-            self.effects.draw_flash();
-            self.draw_overlay();
+            return;
         }
+
+        BeginMode2D(view.camera(self.effects.offset()));
+        self.draw_world();
+        self.effects.draw();
+        self.effects.draw_pops(&self.paint);
+        EndMode2D();
+
+        BeginMode2D(view.camera(Vector2 { .x = 0.0, .y = 0.0 }));
+        self.draw_hud();
+        self.effects.draw_flash();
+        self.draw_overlay();
+        EndMode2D();
     }
 
     pub fn start(*self) void {
@@ -182,6 +239,19 @@ pub struct Game {
             .Paused => true,
             _ => false,
         };
+    }
+
+    fn toggle_pause(*self) void {
+        if (self.is_playing()) {
+            self.state = GameState.Paused;
+            self.audio.pause_sound();
+            return;
+        }
+
+        if (self.is_paused()) {
+            self.state = GameState.Playing;
+            self.audio.resume_sound();
+        }
     }
 
     fn is_over(*const self) bool {
@@ -235,6 +305,56 @@ pub struct Game {
 
         if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
             self.snake.turn(Point { .x = 1, .y = 0 });
+        }
+    }
+
+    fn pointer_gesture(*self, pointer: Vector2) Gesture {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            self.touch_start = pointer;
+            self.touch_active = true;
+        }
+
+        let idle = Gesture { .tap = false, .swipe = Point { .x = 0, .y = 0 } };
+
+        if (!self.touch_active || !IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            return idle;
+        }
+
+        self.touch_active = false;
+
+        let dx = pointer.x - self.touch_start.x;
+        let dy = pointer.y - self.touch_start.y;
+        let ax = if (dx < 0.0) { -dx } else { dx };
+        let ay = if (dy < 0.0) { -dy } else { dy };
+
+        if (ax < SWIPE_MIN && ay < SWIPE_MIN) {
+            return Gesture { .tap = true, .swipe = Point { .x = 0, .y = 0 } };
+        }
+
+        if (ax > ay) {
+            return Gesture {
+                .tap = false,
+                .swipe = Point { .x = if (dx > 0.0) { 1 } else { -1 }, .y = 0 },
+            };
+        }
+
+        return Gesture {
+            .tap = false,
+            .swipe = Point { .x = 0, .y = if (dy > 0.0) { 1 } else { -1 } },
+        };
+    }
+
+    fn menu_tap(*self, pointer: Vector2) void {
+        let i: i32 = 0;
+
+        while (i < MENU_ITEMS) {
+            if (CheckCollisionPointRec(pointer, self.menu_rect(i))) {
+                self.menu = i;
+                self.menu_select();
+                return;
+            }
+
+            i += 1;
         }
     }
 
@@ -475,17 +595,23 @@ pub struct Game {
         DrawRectangle(0, 0, SCREEN_W, HUD, PANEL);
         DrawRectangle(0, HUD - 1, SCREEN_W, 1, BORDER);
 
-        self.paint.text("SCORE", 16, 16, 16, TEXT_DIM);
+        let mode = Game.mode_short(self.wrap);
+        let mode_y = HUD / 2 - HUD_MODE_SIZE / 2;
+        let x = HUD_PAD;
+
+        self.paint.text(mode, x, mode_y, HUD_MODE_SIZE, TEXT_DIM);
+        x += self.paint.width(mode, HUD_MODE_SIZE) + HUD_GAP;
+
+        self.paint.text("SCORE", x, mode_y, HUD_LABEL_SIZE, TEXT_DIM);
+        x += self.paint.width("SCORE", HUD_LABEL_SIZE) + 10;
 
         let score_text = @as([*]const char, TextFormat("%i", self.score));
-        let score_w = self.paint.width(score_text, 22);
-        let score_x = 16 + self.paint.width("SCORE", 16) + 10;
+        let score_w = self.paint.width(score_text, HUD_SCORE_SIZE);
+        let score_y = HUD / 2 - HUD_SCORE_SIZE / 2 - 2;
 
-        self.paint.heavy_text(score_text, score_x, 12, 22, ACCENT);
-        self.draw_combo(score_x + score_w + 22);
-
-        let mode = Game.mode_short(self.wrap);
-        self.paint.text(mode, self.paint.center_x(mode, 16), 16, 16, TEXT_DIM);
+        self.paint.heavy_text(score_text, x, score_y, HUD_SCORE_SIZE, ACCENT);
+        self.draw_combo(x + score_w + HUD_GAP);
+        self.draw_hud_buttons();
     }
 
     fn draw_combo(*const self, x: i32) void {
@@ -494,13 +620,86 @@ pub struct Game {
         }
 
         let text = @as([*]const char, TextFormat("x%i", self.combo));
-        self.paint.heavy_text(text, x, 14, 20, GOLD);
+        let y = HUD / 2 - HUD_COMBO_SIZE / 2 - 2;
+        self.paint.heavy_text(text, x, y, HUD_COMBO_SIZE, GOLD);
 
-        let bar_w: i32 = 48;
         let frac = Paint.clamp01(self.combo_time / COMBO_WINDOW);
+        let bar_y = HUD - 7;
 
-        DrawRectangle(x, 41, bar_w, 3, Paint.fade(GOLD, 0.22));
-        DrawRectangle(x, 41, @as(i32, @as(f32, bar_w) * frac), 3, GOLD);
+        DrawRectangle(x, bar_y, HUD_COMBO_BAR, 3, Paint.fade(GOLD, 0.22));
+        DrawRectangle(x, bar_y, @as(i32, @as(f32, HUD_COMBO_BAR) * frac), 3, GOLD);
+    }
+
+    fn draw_hud_buttons(*const self) void {
+        let pause = self.hud_pause_rect();
+        let menu = self.hud_menu_rect();
+
+        DrawRectangleRounded(pause, 0.28, 6, Paint.fade(TEXT, 0.10));
+        DrawRectangleRounded(menu, 0.28, 6, Paint.fade(TEXT, 0.10));
+
+        let pause_x = pause.x + pause.width / 2.0;
+        let pause_y = pause.y + pause.height / 2.0;
+        let bar_w = pause.width * 0.13;
+        let bar_h = pause.height * 0.42;
+        let bar_gap = pause.width * 0.10;
+        let bar_y = pause_y - bar_h / 2.0;
+
+        DrawRectangle(
+            @as(i32, pause_x - bar_gap - bar_w),
+            @as(i32, bar_y),
+            @as(i32, bar_w),
+            @as(i32, bar_h),
+            TEXT,
+        );
+        DrawRectangle(
+            @as(i32, pause_x + bar_gap),
+            @as(i32, bar_y),
+            @as(i32, bar_w),
+            @as(i32, bar_h),
+            TEXT,
+        );
+
+        let menu_x = menu.x + menu.width / 2.0;
+        let menu_y = menu.y + menu.height / 2.0;
+        let line_w = menu.width * 0.46;
+        let line_h = menu.height * 0.075;
+        let line_gap = menu.height * 0.15;
+        let line_x = menu_x - line_w / 2.0;
+        let line: i32 = -1;
+
+        while (line <= 1) {
+            DrawRectangle(
+                @as(i32, line_x),
+                @as(i32, menu_y + @as(f32, line) * line_gap - line_h / 2.0),
+                @as(i32, line_w),
+                @as(i32, line_h),
+                TEXT,
+            );
+
+            line += 1;
+        }
+    }
+
+    fn hud_pause_rect(*const self) Rectangle {
+        let menu = self.hud_menu_rect();
+
+        return Rectangle {
+            .x = menu.x - @as(f32, HUD_ICON + HUD_ICON_GAP),
+            .y = menu.y,
+            .width = menu.width,
+            .height = menu.height,
+        };
+    }
+
+    fn hud_menu_rect(*const self) Rectangle {
+        let size = @as(f32, HUD_ICON);
+
+        return Rectangle {
+            .x = @as(f32, SCREEN_W - HUD_ICON_PAD) - size,
+            .y = @as(f32, (HUD - HUD_ICON) / 2),
+            .width = size,
+            .height = size,
+        };
     }
 
     fn draw_overlay(*const self) void {
@@ -522,24 +721,16 @@ pub struct Game {
         }
     }
 
-    fn draw_menu_item(*const self, text: [*]const char, index: i32, y: i32) void {
+    fn draw_menu_item(*const self, index: i32) void {
+        let text = self.menu_label(index);
         let size: i32 = 32;
         let width = self.paint.width(text, size);
         let x = (SCREEN_W - width) / 2;
+        let y = MENU_Y + MENU_GAP * index;
         let active = index == self.menu;
 
         if (active) {
-            DrawRectangleRounded(
-                Rectangle {
-                    .x = @as(f32, x - 22),
-                    .y = @as(f32, y - 8),
-                    .width = @as(f32, width + 44),
-                    .height = @as(f32, size + 16),
-                },
-                0.45,
-                8,
-                Paint.fade(ACCENT, 0.16),
-            );
+            DrawRectangleRounded(self.menu_rect(index), 0.45, 8, Paint.fade(ACCENT, 0.16));
         }
 
         let color = if (active) { ACCENT } else { TEXT_DIM };
@@ -547,27 +738,42 @@ pub struct Game {
         self.paint.text(text, x, y, size, color);
     }
 
+    fn menu_rect(*const self, index: i32) Rectangle {
+        let text = self.menu_label(index);
+        let size: i32 = 32;
+        let width = self.paint.width(text, size);
+        let x = (SCREEN_W - width) / 2;
+        let y = MENU_Y + MENU_GAP * index;
+
+        return Rectangle {
+            .x = @as(f32, x - 22),
+            .y = @as(f32, y - 8),
+            .width = @as(f32, width + 44),
+            .height = @as(f32, size + 16),
+        };
+    }
+
+    fn menu_label(*const self, index: i32) [*]const char {
+        if (index == ITEM_MODE) {
+            return Game.mode_label(self.wrap);
+        }
+
+        if (index == ITEM_QUIT) {
+            return "QUIT";
+        }
+
+        return "PLAY";
+    }
+
     fn draw_menu(*const self) void {
         let title: [*]const char = "ZEEN SNAKE";
         let title_size: i32 = 72;
 
-        self.paint.heavy_text(title, self.paint.heavy_center_x(title, title_size), 108, title_size, SNAKE_HEAD);
+        self.paint.heavy_text(title, self.paint.heavy_center_x(title, title_size), MENU_TITLE_Y, title_size, SNAKE_HEAD);
 
-        let y0: i32 = 300;
-        let gap: i32 = 64;
-
-        self.draw_menu_item("PLAY", ITEM_PLAY, y0);
-        self.draw_menu_item(Game.mode_label(self.wrap), ITEM_MODE, y0 + gap);
-        self.draw_menu_item("QUIT", ITEM_QUIT, y0 + gap * 2);
-
-        self.draw_hint();
-    }
-
-    fn draw_hint(*const self) void {
-        let hint: [*]const char = "Navigate With ↓ / ↑";
-        let size: i32 = 20;
-
-        self.paint.text(hint, self.paint.center_x(hint, size), SCREEN_H - 62, size, TEXT_DIM);
+        self.draw_menu_item(ITEM_PLAY);
+        self.draw_menu_item(ITEM_MODE);
+        self.draw_menu_item(ITEM_QUIT);
     }
 
     fn draw_paused(*const self) void {
@@ -584,27 +790,31 @@ pub struct Game {
             TEXT,
         );
 
-        let sub: [*]const char = "Esc to resume";
+        let sub: [*]const char = @os[android] { "Tap To Resume" } else { "Esc to resume" };
 
         self.paint.text(sub, self.paint.center_x(sub, 18), Game.field_mid() + 20, 18, TEXT_DIM);
     }
 
     fn draw_over(*const self) void {
+        let sub: [*]const char = @os[android] { "Tap To Restart" } else { "Press \"R\" to restart" };
+
         DrawRectangle(0, 0, SCREEN_W, SCREEN_H, SHADE);
         self.draw_notice(
             "GAME OVER",
             @as([*]const char, TextFormat("SCORE %i", self.score)),
-            "Press \"R\" to restart",
+            sub,
             TEXT,
         );
     }
 
     fn draw_win(*const self) void {
+        let sub: [*]const char = @os[android] { "Tap To Restart" } else { "Press \"R\" to restart" };
+
         DrawRectangle(0, 0, SCREEN_W, SCREEN_H, SHADE);
         self.draw_notice(
             "YOU WIN",
             @as([*]const char, TextFormat("SCORE %i", self.score)),
-            "Press \"R\" to restart",
+            sub,
             ACCENT,
         );
     }

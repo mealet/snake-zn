@@ -5,7 +5,12 @@ use snake.config;
 use snake.game;
 
 fn main() {
-    InitWindow(SCREEN_W, SCREEN_H, "Zeen Snake");
+    @os[android] {
+        InitWindow(0, 0, "Zeen Snake");
+    } else {
+        InitWindow(SCREEN_W, SCREEN_H, "Zeen Snake");
+    }
+
     SetTargetFPS(60);
     SetRandomSeed(@as(u32, 2024));
     SetExitKey(KEY_NULL);

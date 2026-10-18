@@ -58,3 +58,10 @@ pub struct Point {
 }
 
 implement Copy : Point {}
+
+pub struct Gesture {
+    pub tap: bool,
+    pub swipe: Point,
+}
+
+implement Copy : Gesture {}

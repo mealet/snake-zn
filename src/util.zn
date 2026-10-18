@@ -117,3 +117,47 @@ pub struct Paint {
         return (1.0 - frac) * 2.0;
     }
 }
+
+pub struct View {
+    pub offset: Vector2,
+    pub zoom: f32,
+
+    pub fn current() View {
+        let w = @as(f32, GetScreenWidth());
+        let h = @as(f32, GetScreenHeight()) - @as(f32, SAFE_BOTTOM);
+        let sx = w / @as(f32, SCREEN_W);
+        let sy = h / @as(f32, SCREEN_H);
+        let zoom: f32 = if (sx < sy) { sx } else { sy };
+
+        return View {
+            .offset = Vector2 {
+                .x = (w - @as(f32, SCREEN_W) * zoom) / 2.0,
+                .y = (h - @as(f32, SCREEN_H) * zoom) / 2.0,
+            },
+            .zoom = zoom,
+        };
+    }
+
+    pub fn camera(self, shake: Vector2) Camera2D {
+        return Camera2D {
+            .offset = Vector2 {
+                .x = self.offset.x + shake.x * self.zoom,
+                .y = self.offset.y + shake.y * self.zoom,
+            },
+            .target = Vector2 { .x = 0.0, .y = 0.0 },
+            .rotation = 0.0,
+            .zoom = self.zoom,
+        };
+    }
+
+    pub fn pointer(self) Vector2 {
+        let p = GetMousePosition();
+
+        return Vector2 {
+            .x = (p.x - self.offset.x) / self.zoom,
+            .y = (p.y - self.offset.y) / self.zoom,
+        };
+    }
+}
+
+implement Copy : View {}

@@ -1,19 +1,32 @@
 use zaylib.types;
 
-pub const CELL: i32 = 30;
-pub const COLS: i32 = 20;
-pub const ROWS: i32 = 20;
-pub const HUD: i32 = 48;
+pub const CELL: i32 = @os[android] { 44 } else { 30 };
+pub const COLS: i32 = @os[android] { 14 } else { 20 };
+pub const ROWS: i32 = @os[android] { 29 } else { 20 };
+pub const HUD: i32 = @os[android] { 72 } else { 48 };
 
 pub const SCREEN_W: i32 = COLS * CELL;
 pub const SCREEN_H: i32 = ROWS * CELL + HUD;
 
+pub const SAFE_BOTTOM: i32 = @os[android] { 64 } else { 0 };
+
+pub const HUD_PAD: i32 = @os[android] { 20 } else { 16 };
+pub const HUD_GAP: i32 = @os[android] { 18 } else { 12 };
+pub const HUD_MODE_SIZE: i32 = @os[android] { 22 } else { 16 };
+pub const HUD_LABEL_SIZE: i32 = @os[android] { 22 } else { 16 };
+pub const HUD_SCORE_SIZE: i32 = @os[android] { 30 } else { 22 };
+pub const HUD_COMBO_SIZE: i32 = @os[android] { 24 } else { 20 };
+pub const HUD_COMBO_BAR: i32 = @os[android] { 64 } else { 48 };
+pub const HUD_ICON: i32 = @os[android] { 52 } else { 34 };
+pub const HUD_ICON_GAP: i32 = @os[android] { 10 } else { 8 };
+pub const HUD_ICON_PAD: i32 = @os[android] { 12 } else { 8 };
+
 pub const PAD: f32 = 2.0;
 
-pub const STEP_START: f32 = 0.17;
-pub const STEP_MIN: f32 = 0.070;
-pub const STEP_DEC: f32 = 0.005;
-pub const STEP_REST: f32 = 0.02;
+pub const STEP_START: f32 = @os[android] { 0.22 } else { 0.17 };
+pub const STEP_MIN: f32 = @os[android] { 0.090 } else { 0.070 };
+pub const STEP_DEC: f32 = @os[android] { 0.006 } else { 0.005 };
+pub const STEP_REST: f32 = @os[android] { 0.025 } else { 0.02 };
 
 pub const EAT_SCORE: i32 = 10;
 

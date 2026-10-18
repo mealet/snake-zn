@@ -10,7 +10,7 @@ use snake.util;
 const QUEUE_MAX: i32 = 3;
 
 pub struct Snake {
-    pub body: [400]Point,
+    pub body: [800]Point,
     pub len: i32,
     pub dir: Point,
     pub queue: [3]Point,
@@ -23,7 +23,7 @@ pub struct Snake {
 
     pub fn spawn() Snake {
         let snake = Snake {
-            .body = [Point { .x = 0, .y = 0 }; 400],
+            .body = [Point { .x = 0, .y = 0 }; 800],
             .len = 0,
             .dir = Point { .x = 1, .y = 0 },
             .queue = [Point { .x = 1, .y = 0 }; 3],
@@ -41,14 +41,17 @@ pub struct Snake {
     }
 
     pub fn reset(*self) void {
+        let row = ROWS / 2;
+        let head_x: i32 = @os[android] { 3 } else { 10 };
+
         self.len = 3;
-        self.body[0] = Point { .x = 10, .y = 10 };
-        self.body[1] = Point { .x = 9, .y = 10 };
-        self.body[2] = Point { .x = 8, .y = 10 };
+        self.body[0] = Point { .x = head_x, .y = row };
+        self.body[1] = Point { .x = head_x - 1, .y = row };
+        self.body[2] = Point { .x = head_x - 2, .y = row };
 
         self.dir = Point { .x = 1, .y = 0 };
         self.queue_len = 0;
-        self.timer = 0.0;
+        self.timer = @os[android] { -0.7 } else { 0.0 };
         self.step = STEP_START;
 
         self.tail_prev = self.body[2];
