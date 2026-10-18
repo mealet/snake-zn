@@ -2,6 +2,13 @@
 A beautiful snake game implementation in [Zeen](https://zeen-lang.tech). <br/>
 Made with love and [zaylib](https://github.com/mealet/zaylib) library.
 
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/menu.png" width="45%" alt="Menu" />
+  <img src="screenshots/gameplay.png" width="45%" alt="Gameplay" />
+</p>
+
 ## Build & Run
 1. Ensure you have installed **Zeen** and its package manager Zora (ships with compiler automatically).
 2. Copy this repo:
