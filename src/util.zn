@@ -12,14 +12,35 @@ const FONT_HEAVY: [*]const char = "assets/JetBrainsMono-Bold.ttf";
 const BASE_SIZE: i32 = 96;
 const GLYPHS: i32 = 99;
 
+pub fn asset(path: [*]const char) [*]const char {
+    @os[android] {
+        return path;
+    }
+
+    let dir = GetApplicationDirectory();
+    let local = @as([*]const char, TextFormat("%s%s", dir, path));
+
+    if (FileExists(local)) {
+        return local;
+    }
+
+    let resources = @as([*]const char, TextFormat("%s../Resources/%s", dir, path));
+
+    if (FileExists(resources)) {
+        return resources;
+    }
+
+    return path;
+}
+
 pub struct Paint {
     pub font: Font,
     pub heavy: Font,
 
     pub fn load() Paint {
         return Paint {
-            .font = Paint.face(FONT_REGULAR),
-            .heavy = Paint.face(FONT_HEAVY),
+            .font = Paint.face(asset(FONT_REGULAR)),
+            .heavy = Paint.face(asset(FONT_HEAVY)),
         };
     }
 

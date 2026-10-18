@@ -2,6 +2,8 @@ use zaylib.types;
 
 use zaylib.audio;
 
+use snake.util;
+
 const EAT: [*]const char = "assets/sounds/eat.wav";
 const GOLD: [*]const char = "assets/sounds/gold.wav";
 const DEATH: [*]const char = "assets/sounds/death.wav";
@@ -44,14 +46,14 @@ pub struct Audio {
 
         return Audio {
             .ready = true,
-            .eat = LoadSound(EAT),
-            .gold = LoadSound(GOLD),
-            .death = LoadSound(DEATH),
-            .win = LoadSound(WIN),
-            .move = LoadSound(MOVE),
-            .select = LoadSound(SELECT),
-            .pause = LoadSound(PAUSE),
-            .resume = LoadSound(RESUME),
+            .eat = LoadSound(asset(EAT)),
+            .gold = LoadSound(asset(GOLD)),
+            .death = LoadSound(asset(DEATH)),
+            .win = LoadSound(asset(WIN)),
+            .move = LoadSound(asset(MOVE)),
+            .select = LoadSound(asset(SELECT)),
+            .pause = LoadSound(asset(PAUSE)),
+            .resume = LoadSound(asset(RESUME)),
         };
     }
 
