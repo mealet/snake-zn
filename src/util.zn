@@ -1,3 +1,5 @@
+use std.math;
+
 use zaylib.types;
 use zaylib.core;
 use zaylib.enums;
@@ -46,11 +48,9 @@ pub struct Paint {
 
     fn face(path: [*]const char) Font {
         let cps: [99]i32 = [0; 99];
-        let i: i32 = 0;
 
-        while (i < 95) {
+        for (i : 95) {
             cps[@as(usize, i)] = 32 + i;
-            i += 1;
         }
 
         cps[95] = 8592;
@@ -116,15 +116,7 @@ pub struct Paint {
     }
 
     pub fn clamp01(t: f32) f32 {
-        if (t < 0.0) {
-            return 0.0;
-        }
-
-        if (t > 1.0) {
-            return 1.0;
-        }
-
-        return t;
+        return clamp(t, 0.0, 1.0);
     }
 
     pub fn wave(speed: f32) f32 {
@@ -148,7 +140,7 @@ pub struct View {
         let h = @as(f32, GetScreenHeight()) - @as(f32, SAFE_BOTTOM);
         let sx = w / @as(f32, SCREEN_W);
         let sy = h / @as(f32, SCREEN_H);
-        let zoom: f32 = if (sx < sy) { sx } else { sy };
+        let zoom: f32 = min(sx, sy);
 
         return View {
             .offset = Vector2 {

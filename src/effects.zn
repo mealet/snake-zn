@@ -71,16 +71,12 @@ pub struct Effects {
     }
 
     pub fn clear(*self) void {
-        let i: i32 = 0;
-        while (i < CAPACITY) {
+        for (i : CAPACITY) {
             self.parts[@as(usize, i)].life = 0.0;
-            i += 1;
         }
 
-        let p: i32 = 0;
-        while (p < POPS) {
+        for (p : POPS) {
             self.pops[@as(usize, p)].life = 0.0;
-            p += 1;
         }
 
         self.shake = 0.0;
@@ -112,9 +108,7 @@ pub struct Effects {
     }
 
     pub fn burst(*self, center: Vector2, color: Color, count: i32, speed: f32, size: f32) void {
-        let i: i32 = 0;
-
-        while (i < count) {
+        for (i : count) {
             let dx = @as(f32, GetRandomValue(-100, 100)) / 100.0;
             let dy = @as(f32, GetRandomValue(-100, 100)) / 100.0;
             let speed_jitter = speed * (0.30 + @as(f32, GetRandomValue(0, 100)) / 140.0);
@@ -130,8 +124,6 @@ pub struct Effects {
                 size,
                 color,
             );
-
-            i += 1;
         }
     }
 
@@ -167,8 +159,7 @@ pub struct Effects {
         let best = 0;
         let oldest = OLDEST_START;
 
-        let i: i32 = 0;
-        while (i < CAPACITY) {
+        for (i : CAPACITY) {
             let life = self.parts[@as(usize, i)].life;
 
             if (life <= 0.0) {
@@ -179,8 +170,6 @@ pub struct Effects {
                 oldest = life;
                 best = i;
             }
-
-            i += 1;
         }
 
         return best;
@@ -190,8 +179,7 @@ pub struct Effects {
         let best = 0;
         let oldest = OLDEST_START;
 
-        let i: i32 = 0;
-        while (i < POPS) {
+        for (i : POPS) {
             let life = self.pops[@as(usize, i)].life;
 
             if (life <= 0.0) {
@@ -202,8 +190,6 @@ pub struct Effects {
                 oldest = life;
                 best = i;
             }
-
-            i += 1;
         }
 
         return best;
@@ -223,27 +209,21 @@ pub struct Effects {
             self.flash_alpha = 0.0;
         }
 
-        let i: i32 = 0;
-        while (i < CAPACITY) {
+        for (i : CAPACITY) {
             let part = self.parts[@as(usize, i)];
 
             if (part.life > 0.0) {
                 self.step_part(i, part, dt);
             }
-
-            i += 1;
         }
 
-        let p: i32 = 0;
-        while (p < POPS) {
+        for (p : POPS) {
             let pop = self.pops[@as(usize, p)];
 
             if (pop.life > 0.0) {
                 self.pops[@as(usize, p)].life = pop.life - dt;
                 self.pops[@as(usize, p)].y = pop.y - 34.0 * dt;
             }
-
-            p += 1;
         }
     }
 
@@ -264,29 +244,20 @@ pub struct Effects {
     pub fn draw(*const self) void {
         BeginBlendMode(BLEND_ADDITIVE);
 
-        let i: i32 = 0;
-        while (i < CAPACITY) {
-            let part = self.parts[@as(usize, i)];
-
+        for (part : self.parts) {
             if (part.life > 0.0) {
                 let fade = Paint.clamp01(part.life / part.max);
                 let radius = part.size * (0.30 + 0.70 * fade);
 
                 DrawCircleV(Vector2 { .x = part.x, .y = part.y }, radius, Paint.fade(part.color, fade));
             }
-
-            i += 1;
         }
 
         EndBlendMode();
     }
 
     pub fn draw_pops(*const self, paint: *const Paint) void {
-        let i: i32 = 0;
-
-        while (i < POPS) {
-            let pop = self.pops[@as(usize, i)];
-
+        for (pop : self.pops) {
             if (pop.life > 0.0) {
                 let fade = Paint.clamp01(pop.life / pop.max);
                 let text = @as([*]const char, TextFormat("+%i", pop.value));
@@ -295,8 +266,6 @@ pub struct Effects {
 
                 paint.heavy_text(text, x, @as(i32, pop.y), size, Paint.fade(pop.color, fade));
             }
-
-            i += 1;
         }
     }
 

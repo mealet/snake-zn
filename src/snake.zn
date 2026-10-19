@@ -65,7 +65,7 @@ pub struct Snake {
         } else {
             self.dir
         };
-        let same = d.x == last.x && d.y == last.y;
+        let same = d == last;
         let opposite = d.x + last.x == 0 && d.y + last.y == 0;
 
         if (!same && !opposite && self.queue_len < QUEUE_MAX) {
@@ -78,10 +78,8 @@ pub struct Snake {
         if (self.queue_len > 0) {
             self.dir = self.queue[0];
 
-            let i: i32 = 0;
-            while (i < self.queue_len - 1) {
+            for (i : self.queue_len - 1) {
                 self.queue[@as(usize, i)] = self.queue[@as(usize, i + 1)];
-                i += 1;
             }
 
             self.queue_len -= 1;
@@ -100,7 +98,7 @@ pub struct Snake {
     }
 
     pub fn next_head(*const self) Point {
-        return self.body[0].plus(self.dir);
+        return self.body[0] + self.dir;
     }
 
     pub fn advance(*self, next: Point, grow: bool) void {
@@ -138,13 +136,10 @@ pub struct Snake {
     }
 
     pub fn occupies(*const self, cell: Point) bool {
-        let i: i32 = 0;
-
-        while (i < self.len) {
-            if (self.body[@as(usize, i)].eq(cell)) {
+        for (body_cell : self.body[0..@as(usize, self.len)]) {
+            if (body_cell == cell) {
                 return true;
             }
-            i += 1;
         }
 
         return false;
@@ -152,13 +147,11 @@ pub struct Snake {
 
     pub fn hits_self(*const self, head: Point, eating: bool) bool {
         let limit = if (eating) { self.len } else { self.len - 1 };
-        let i: i32 = 0;
 
-        while (i < limit) {
-            if (self.body[@as(usize, i)].eq(head)) {
+        for (body_cell : self.body[0..@as(usize, limit)]) {
+            if (body_cell == head) {
                 return true;
             }
-            i += 1;
         }
 
         return false;

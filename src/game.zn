@@ -221,24 +221,15 @@ pub struct Game {
     }
 
     fn is_menu(*const self) bool {
-        return switch (self.state) {
-            .Menu => true,
-            _ => false,
-        };
+        return self.state == GameState.Menu;
     }
 
     fn is_playing(*const self) bool {
-        return switch (self.state) {
-            .Playing => true,
-            _ => false,
-        };
+        return self.state == GameState.Playing;
     }
 
     fn is_paused(*const self) bool {
-        return switch (self.state) {
-            .Paused => true,
-            _ => false,
-        };
+        return self.state == GameState.Paused;
     }
 
     fn toggle_pause(*self) void {
@@ -255,11 +246,7 @@ pub struct Game {
     }
 
     fn is_over(*const self) bool {
-        return switch (self.state) {
-            .Over => true,
-            .Win => true,
-            _ => false,
-        };
+        return self.state == GameState.Over || self.state == GameState.Win;
     }
 
     fn menu_move(*self, delta: i32) void {
@@ -345,16 +332,12 @@ pub struct Game {
     }
 
     fn menu_tap(*self, pointer: Vector2) void {
-        let i: i32 = 0;
-
-        while (i < MENU_ITEMS) {
+        for (i : MENU_ITEMS) {
             if (CheckCollisionPointRec(pointer, self.menu_rect(i))) {
                 self.menu = i;
                 self.menu_select();
                 return;
             }
-
-            i += 1;
         }
     }
 
@@ -370,12 +353,10 @@ pub struct Game {
         let pick = Point { .x = 0, .y = 0 };
         let total: i32 = 0;
 
-        let y: i32 = 0;
-        while (y < ROWS) {
-            let x: i32 = 0;
-            while (x < COLS) {
+        for (y : ROWS) {
+            for (x : COLS) {
                 let cell = Point { .x = x, .y = y };
-                let free = !self.snake.occupies(cell) && (blocked.is_none() || !cell.eq(blocked.unwrap()));
+                let free = !self.snake.occupies(cell) && (blocked.is_none() || cell != blocked.unwrap());
 
                 if (free) {
                     total += 1;
@@ -384,11 +365,7 @@ pub struct Game {
                         pick = cell;
                     }
                 }
-
-                x += 1;
             }
-
-            y += 1;
         }
 
         if (total == 0) {
@@ -407,8 +384,8 @@ pub struct Game {
             head = head.wrap();
         }
 
-        let eating = head.eq(self.food.cell);
-        let golden = self.gold_life > 0.0 && head.eq(self.gold.cell);
+        let eating = head == self.food.cell;
+        let golden = self.gold_life > 0.0 && head == self.gold.cell;
         let grow = eating || golden;
 
         if (!head.inside() || self.snake.hits_self(head, grow)) {
