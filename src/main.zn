@@ -1,3 +1,5 @@
+use std.time;
+
 use zaylib.core;
 use zaylib.enums;
 
@@ -12,7 +14,7 @@ fn main() {
     }
 
     SetTargetFPS(60);
-    SetRandomSeed(2024);
+    SetRandomSeed(@as(u32, Time.now()));
     SetExitKey(KEY_NULL);
 
     let game = Game.spawn();
