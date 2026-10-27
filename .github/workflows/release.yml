@@ -65,6 +65,11 @@ jobs:
           tar -xzf "$RUNNER_TEMP/raylib.tar.gz" -C "$RAYLIB_DIR" --strip-components=1
           echo "RAYLIB_DIR=$RAYLIB_DIR" >> "$GITHUB_ENV"
 
+      - name: Install X11 development files
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libx11-dev
+
       - name: Build and package
         env:
           APP_VERSION: ${{ needs.meta.outputs.version }}
@@ -117,14 +122,14 @@ jobs:
           $src = Join-Path $source "raylib-$env:RAYLIB_VERSION"
           $raylib = Join-Path $env:RUNNER_TEMP "raylib"
           Add-Content -Path $env:GITHUB_ENV -Value "RAYLIB_DIR=$raylib"
-          cmake -S $src -B $build -G "Visual Studio 17 2022" -A x64 `
+          cmake -S $src -B $build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
             -DBUILD_SHARED_LIBS=OFF -DBUILD_EXAMPLES=OFF `
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
           if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
-          cmake --build $build --config Release --target raylib
+          cmake --build $build --target raylib
           if ($LASTEXITCODE -ne 0) { throw "raylib build failed" }
           $lib = Get-ChildItem $build -Recurse -Filter raylib.lib |
-            Where-Object { $_.FullName -match '\\Release\\' } |
             Select-Object -First 1
           if (-not $lib) { throw "raylib.lib not found" }
           if ($env:VCINSTALLDIR -and (Test-Path "$env:VCINSTALLDIR\Tools\MSVC")) {
@@ -213,6 +218,8 @@ jobs:
           java-version: "17"
 
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
 
       - name: Install SDK packages
         run: |

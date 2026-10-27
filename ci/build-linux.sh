@@ -35,7 +35,6 @@ cp "$RAYLIB_DIR/lib/libraylib.a" "$STATIC_LIB_DIR/libraylib.a"
         --link pthread \
         --link dl \
         --link rt \
-        --link GL \
         --link X11 \
         --link-dir "$STATIC_LIB_DIR"
 )
