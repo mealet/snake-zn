@@ -56,19 +56,26 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: ci/install-zeen.sh "${{ inputs.zeen_version }}" "$HOME/zeen"
 
-      - name: Install raylib
-        run: |
-          RAYLIB_DIR="$RUNNER_TEMP/raylib"
-          mkdir -p "$RAYLIB_DIR"
-          curl -fsSL --retry 3 -o "$RUNNER_TEMP/raylib.tar.gz" \
-            "https://github.com/raysan5/raylib/releases/download/$RAYLIB_VERSION/raylib-${RAYLIB_VERSION}_linux_amd64.tar.gz"
-          tar -xzf "$RUNNER_TEMP/raylib.tar.gz" -C "$RAYLIB_DIR" --strip-components=1
-          echo "RAYLIB_DIR=$RAYLIB_DIR" >> "$GITHUB_ENV"
-
-      - name: Install X11 development files
+      - name: Install raylib build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libx11-dev
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev \
+            libxcursor-dev libxi-dev
+
+      - name: Build raylib
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/raylib.tar.gz" \
+            "https://github.com/raysan5/raylib/archive/refs/tags/$RAYLIB_VERSION.tar.gz"
+          tar -xzf "$RUNNER_TEMP/raylib.tar.gz" -C "$RUNNER_TEMP"
+          make -C "$RUNNER_TEMP/raylib-$RAYLIB_VERSION/src" -j"$(nproc)" \
+            PLATFORM=PLATFORM_DESKTOP \
+            RAYLIB_LIBTYPE=STATIC \
+            RAYLIB_BUILD_MODE=RELEASE
+          RAYLIB_DIR="$RUNNER_TEMP/raylib"
+          mkdir -p "$RAYLIB_DIR/lib"
+          cp "$RUNNER_TEMP/raylib-$RAYLIB_VERSION/src/libraylib.a" "$RAYLIB_DIR/lib/"
+          echo "RAYLIB_DIR=$RAYLIB_DIR" >> "$GITHUB_ENV"
 
       - name: Build and package
         env:
