@@ -31,7 +31,10 @@ fn main() {
     }
 
     game.audio.unload();
-    // NOTE: CloseWindow() is deliberately not called: the MSVC linker resolves
-    // that symbol from user32.lib (which Zeen links before user libraries),
-    // colliding with raylib's own CloseWindow. The OS frees everything on exit.
+    // raylib's CloseWindow collides with user32.lib in the MSVC link, because
+    // Zeen links user32 before user libraries, so skip it on Windows only.
+    @os[windows] {
+    } else {
+        CloseWindow();
+    }
 }
