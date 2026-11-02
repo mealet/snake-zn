@@ -47,7 +47,7 @@ pub struct Paint {
     }
 
     fn face(path: [*]const char) Font {
-        let cps: [99]i32 = [0; 99];
+        let cps: [99]i32 = {0; 99};
 
         for (i : 95) {
             cps[@as(usize, i)] = 32 + i;

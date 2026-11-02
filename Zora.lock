@@ -3,17 +3,17 @@ version = 3
 [[package]]
 name = "snake"
 version = "0.0.0"
-zeen = "^0.4.0"
-dependencies = ["zaylib@cf759802ad7c70f00beb3b327adbdf1e11a1254e"]
+zeen = "^0.5.0"
+dependencies = ["zaylib@a97d01570693dff64cf686603cef1b53d5e68507"]
 
 [[package]]
 name = "zaylib"
-version = "0.0.0"
-zeen = "^0.4.0"
+version = "0.1.0"
+zeen = "^0.5.0"
 dependencies = []
 repository = "https://github.com/mealet/zaylib"
 branch = "main"
-commit = "cf759802ad7c70f00beb3b327adbdf1e11a1254e"
+commit = "a97d01570693dff64cf686603cef1b53d5e68507"
 
 [package.build]
 output = "zaylib"
@@ -41,7 +41,6 @@ link = [
     "pthread",
     "dl",
     "rt",
-    "GL",
     "X11",
 ]
 

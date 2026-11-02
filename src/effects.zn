@@ -46,7 +46,7 @@ pub struct Effects {
 
     pub fn new() Effects {
         return Effects {
-            .parts = [Particle {
+            .parts = {Particle {
                 .x = 0.0,
                 .y = 0.0,
                 .vx = 0.0,
@@ -55,15 +55,15 @@ pub struct Effects {
                 .max = 0.0,
                 .size = 0.0,
                 .color = WHITE,
-            }; 160],
-            .pops = [Popup {
+            }; 160},
+            .pops = {Popup {
                 .x = 0.0,
                 .y = 0.0,
                 .value = 0,
                 .life = 0.0,
                 .max = 0.0,
                 .color = WHITE,
-            }; 16],
+            }; 16},
             .shake = 0.0,
             .flash_alpha = 0.0,
             .flash_color = WHITE,
